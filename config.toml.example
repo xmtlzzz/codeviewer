@@ -1,0 +1,10 @@
+# CodeViewer 配置
+
+author_email = "your-email@example.com"  # 只统计此作者的提交，留空则统计所有人
+
+[[repos]]
+path = "/path/to/your/project"
+
+[scan]
+interval_secs = 30   # 后台扫描间隔（秒），最低 5
+since_days = 30      # 统计最近多少天的提交
