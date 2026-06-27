@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/codeviewer-core"]
+members = ["crates/codeviewer-core", "crates/codeviewer-desktop"]
 resolver = "2"
 
 [workspace.package]
