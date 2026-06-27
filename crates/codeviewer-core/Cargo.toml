@@ -7,6 +7,10 @@ edition.workspace = true
 name = "codeviewer_core"
 path = "src/lib.rs"
 
+[[bin]]
+name = "codeviewer"
+path = "src/bin/codeviewer.rs"
+
 [dependencies]
 git2 = "0.18"
 serde = { version = "1", features = ["derive"] }
