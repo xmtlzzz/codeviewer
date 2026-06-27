@@ -1,0 +1,19 @@
+[package]
+name = "codeviewer-core"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "codeviewer_core"
+path = "src/lib.rs"
+
+[dependencies]
+git2 = "0.18"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "5"
+
+[dev-dependencies]
+tempfile = "3"
