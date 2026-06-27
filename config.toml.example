@@ -3,6 +3,12 @@
 author_email = "your-email@example.com"  # 只统计此作者的提交，留空则统计所有人
 
 [[repos]]
+# Windows 路径用单引号（literal string）避免反斜杠转义问题：
+#   path = 'D:\code\my-project'
+# 或使用正斜杠：
+#   path = "D:/code/my-project"
+# macOS/Linux 路径直接用双引号即可：
+#   path = "/home/user/my-project"
 path = "/path/to/your/project"
 
 [scan]

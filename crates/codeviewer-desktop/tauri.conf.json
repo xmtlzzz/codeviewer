@@ -1,7 +1,7 @@
 {
   "productName": "CodeViewer",
   "version": "0.1.0",
-  "identifier": "com.codeviewer.app",
+  "identifier": "com.codeviewer.desktop",
   "build": {
     "beforeDevCommand": "",
     "devUrl": "http://localhost:5173",
@@ -26,6 +26,6 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/icon.png", "icons/icon.ico"]
+    "icon": ["icons/icon.png", "icons/icon.ico", "icons/icon.icns"]
   }
 }
