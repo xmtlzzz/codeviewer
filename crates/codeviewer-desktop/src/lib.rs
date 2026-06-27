@@ -17,6 +17,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(AppState {
             config: Mutex::new(config),
+            config_path,
         })
         .setup(|app| {
             #[cfg(desktop)]
@@ -30,6 +31,9 @@ pub fn run() {
             commands::get_summary,
             commands::get_config,
             commands::scan_now,
+            commands::add_repo,
+            commands::remove_repo,
+            commands::set_author_email,
         ])
         .run(tauri::generate_context!())
         .expect("error while running codeviewer application");

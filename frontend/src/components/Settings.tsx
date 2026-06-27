@@ -1,22 +1,68 @@
+import { useState } from "react";
 import type { Config } from "../types";
-import { GithubIcon, PlusIcon, SunIcon, MoonIcon, MonitorIcon } from "./icons";
+import { addRepo, removeRepo, setAuthorEmail } from "../api";
+import { GithubIcon, PlusIcon, SunIcon, MoonIcon, MonitorIcon, TrashIcon } from "./icons";
 
 interface SettingsProps {
   config: Config;
   themeMode: ThemeMode;
   onSetTheme: (mode: ThemeMode) => void;
+  onConfigChange: (config: Config) => void;
 }
 
 export type ThemeMode = "light" | "dark" | "auto";
 
 const APP_VERSION = "0.1.0";
 
-export function Settings({ config, themeMode, onSetTheme }: SettingsProps) {
+export function Settings({ config, themeMode, onSetTheme, onConfigChange }: SettingsProps) {
+  const [newRepoPath, setNewRepoPath] = useState("");
+  const [emailInput, setEmailInput] = useState(config.author_email);
+  const [saving, setSaving] = useState(false);
+
   const repoCount = config.repos.length;
   const intervalLabel =
     config.scan.interval_secs >= 60
       ? `${Math.round(config.scan.interval_secs / 60)} 分钟`
       : `${config.scan.interval_secs} 秒`;
+
+  const handleAddRepo = async () => {
+    const path = newRepoPath.trim();
+    if (!path) return;
+    setSaving(true);
+    try {
+      const updated = await addRepo(path);
+      onConfigChange(updated);
+      setNewRepoPath("");
+    } catch (e) {
+      console.error("add_repo failed:", e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemoveRepo = async (path: string) => {
+    setSaving(true);
+    try {
+      const updated = await removeRepo(path);
+      onConfigChange(updated);
+    } catch (e) {
+      console.error("remove_repo failed:", e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveEmail = async () => {
+    setSaving(true);
+    try {
+      const updated = await setAuthorEmail(emailInput.trim());
+      onConfigChange(updated);
+    } catch (e) {
+      console.error("set_author_email failed:", e);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <section className="page active">
@@ -49,11 +95,27 @@ export function Settings({ config, themeMode, onSetTheme }: SettingsProps) {
             <span className="info-label">统计天数</span>
             <span className="info-value mono">{config.scan.since_days} 天</span>
           </div>
-          <div className="info-row">
+          {/* Author Email — editable */}
+          <div className="info-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
             <span className="info-label">作者邮箱</span>
-            <span className="info-value mono">
-              {config.author_email || "未设置"}
-            </span>
+            <div className="email-edit">
+              <input
+                className="settings-input"
+                type="text"
+                placeholder="your-email@example.com"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSaveEmail(); }}
+              />
+              <button
+                className="btn"
+                type="button"
+                disabled={saving || emailInput.trim() === config.author_email}
+                onClick={handleSaveEmail}
+              >
+                保存
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -94,7 +156,7 @@ export function Settings({ config, themeMode, onSetTheme }: SettingsProps) {
         </div>
       </div>
 
-      {/* Repo Management */}
+      {/* Repo Management — interactive */}
       <div className="settings-section">
         <div className="section-title">
           <span>仓库管理</span>
@@ -108,6 +170,15 @@ export function Settings({ config, themeMode, onSetTheme }: SettingsProps) {
               <span className="repo-path" title={repo.path}>
                 {repo.path}
               </span>
+              <button
+                className="repo-delete"
+                type="button"
+                title="删除仓库"
+                disabled={saving}
+                onClick={() => handleRemoveRepo(repo.path)}
+              >
+                <TrashIcon />
+              </button>
             </div>
           ))}
           {config.repos.length === 0 && (
@@ -116,10 +187,27 @@ export function Settings({ config, themeMode, onSetTheme }: SettingsProps) {
               <span className="repo-name">尚未添加仓库</span>
             </div>
           )}
-          <button className="repo-add" type="button" disabled style={{ opacity: 0.6, cursor: "not-allowed" }}>
-            <PlusIcon />
-            添加仓库
-          </button>
+          {/* Add repo input */}
+          <div className="input-row">
+            <input
+              className="settings-input"
+              type="text"
+              placeholder="输入仓库路径，如 D:\code\my-project"
+              value={newRepoPath}
+              onChange={(e) => setNewRepoPath(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAddRepo(); }}
+              disabled={saving}
+            />
+            <button
+              className="btn"
+              type="button"
+              disabled={saving || !newRepoPath.trim()}
+              onClick={handleAddRepo}
+            >
+              <PlusIcon />
+              添加
+            </button>
+          </div>
         </div>
       </div>
 

@@ -17,3 +17,15 @@ export async function scanNow(): Promise<ScanResult> {
 export function onStatsUpdated(callback: (summary: Summary) => void) {
   return listen<Summary>("stats-updated", (event) => callback(event.payload));
 }
+
+export async function addRepo(path: string, name?: string): Promise<Config> {
+  return invoke<Config>("add_repo", { path, name: name ?? null });
+}
+
+export async function removeRepo(path: string): Promise<Config> {
+  return invoke<Config>("remove_repo", { path });
+}
+
+export async function setAuthorEmail(email: string): Promise<Config> {
+  return invoke<Config>("set_author_email", { email });
+}

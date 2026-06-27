@@ -73,6 +73,12 @@ export default function App() {
     setThemeMode(mode);
   };
 
+  // When config changes (add/remove repo, email update), refresh summary too
+  const handleConfigChange = (updated: Config) => {
+    setConfig(updated);
+    getSummary().then(setSummary).catch(() => undefined);
+  };
+
   const isDark = getEffectiveTheme(themeMode) === "dark";
 
   return (
@@ -102,6 +108,7 @@ export default function App() {
           config={config}
           themeMode={themeMode}
           onSetTheme={handleSetTheme}
+          onConfigChange={handleConfigChange}
         />
       )}
     </div>

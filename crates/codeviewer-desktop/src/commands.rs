@@ -1,9 +1,11 @@
 use codeviewer_core::{aggregator, config, models, scanner};
+use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::State;
 
 pub struct AppState {
     pub config: Mutex<config::Config>,
+    pub config_path: PathBuf,
 }
 
 fn scan_all(config: &config::Config) -> (Vec<Vec<models::DailyStat>>, Vec<String>) {
@@ -50,4 +52,41 @@ pub fn scan_now(state: State<'_, AppState>) -> ScanResult {
     let (all, errors) = scan_all(&config);
     let summary = aggregator::aggregate(all);
     ScanResult { summary, errors }
+}
+
+/// Add a repo, persist config, return updated config.
+#[tauri::command]
+pub fn add_repo(
+    state: State<'_, AppState>,
+    path: String,
+    name: Option<String>,
+) -> Result<config::Config, String> {
+    let mut guard = state.config.lock().unwrap();
+    guard.add_repo(path, name);
+    guard.save(&state.config_path).map_err(|e| e.to_string())?;
+    Ok(guard.clone())
+}
+
+/// Remove a repo by path, persist config, return updated config.
+#[tauri::command]
+pub fn remove_repo(
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<config::Config, String> {
+    let mut guard = state.config.lock().unwrap();
+    guard.remove_repo(&path);
+    guard.save(&state.config_path).map_err(|e| e.to_string())?;
+    Ok(guard.clone())
+}
+
+/// Set author email, persist config, return updated config.
+#[tauri::command]
+pub fn set_author_email(
+    state: State<'_, AppState>,
+    email: String,
+) -> Result<config::Config, String> {
+    let mut guard = state.config.lock().unwrap();
+    guard.set_author_email(email);
+    guard.save(&state.config_path).map_err(|e| e.to_string())?;
+    Ok(guard.clone())
 }

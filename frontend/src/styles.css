@@ -856,6 +856,74 @@ body {
 }
 
 /* ============================================================
+   Settings — Input Fields (add repo, edit email)
+   ============================================================ */
+.settings-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-inset);
+  color: var(--text-primary);
+  font-size: 13px;
+  font-family: inherit;
+  border-radius: 4px;
+  outline: none;
+  transition: border-color 150ms ease;
+}
+
+.settings-input:focus {
+  border-color: var(--accent);
+}
+
+.settings-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.input-row {
+  display: flex;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.input-row .btn {
+  flex-shrink: 0;
+}
+
+.email-edit {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 16px;
+}
+
+.repo-delete {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background-color 150ms ease, color 150ms ease;
+  margin-left: 8px;
+}
+
+.repo-delete:hover {
+  background: var(--bg-hover);
+  color: var(--status-off);
+}
+
+.repo-delete svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.5;
+}
+
+/* ============================================================
    Responsive
    ============================================================ */
 @media (max-width: 520px) {
