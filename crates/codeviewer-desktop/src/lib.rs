@@ -5,6 +5,8 @@ mod scanner_task;
 mod tray;
 
 use commands::AppState;
+use codeviewer_core::config::CloseBehavior;
+use tauri::Manager;
 
 pub fn run() {
     let config_path = dirs::config_dir()
@@ -18,6 +20,16 @@ pub fn run() {
         .manage(AppState {
             config: Mutex::new(config),
             config_path,
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let state = window.state::<AppState>();
+                let behavior = state.config.lock().unwrap().close_behavior.clone();
+                if behavior == CloseBehavior::Minimize {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
         })
         .setup(|app| {
             #[cfg(desktop)]

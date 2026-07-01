@@ -2,6 +2,19 @@ use crate::error::ScanError;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum CloseBehavior {
+    Minimize,
+    Exit,
+}
+
+impl Default for CloseBehavior {
+    fn default() -> Self {
+        CloseBehavior::Minimize
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Config {
     #[serde(default)]
@@ -10,6 +23,8 @@ pub struct Config {
     pub scan: ScanConfig,
     #[serde(default)]
     pub author_email: String,
+    #[serde(default)]
+    pub close_behavior: CloseBehavior,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,7 +53,12 @@ impl Default for ScanConfig {
 
 impl Default for Config {
     fn default() -> Self {
-        Config { repos: Vec::new(), scan: ScanConfig::default(), author_email: String::new() }
+        Config {
+            repos: Vec::new(),
+            scan: ScanConfig::default(),
+            author_email: String::new(),
+            close_behavior: CloseBehavior::Minimize,
+        }
     }
 }
 
@@ -85,6 +105,11 @@ impl Config {
     pub fn set_author_email(&mut self, email: String) {
         self.author_email = email;
     }
+
+    /// Set the close behavior (minimize to tray or exit).
+    pub fn set_close_behavior(&mut self, behavior: CloseBehavior) {
+        self.close_behavior = behavior;
+    }
 }
 
 #[cfg(test)]
@@ -121,6 +146,7 @@ since_days = 30
         assert_eq!(config.scan.interval_secs, 30);
         assert_eq!(config.scan.since_days, 30);
         assert_eq!(config.author_email, "");
+        assert_eq!(config.close_behavior, CloseBehavior::Minimize);
     }
 
     #[test]
@@ -143,6 +169,7 @@ interval_secs = 1
             repos: vec![RepoEntry { path: "/tmp/test".into(), name: Some("test".into()) }],
             scan: ScanConfig { interval_secs: 45, since_days: 14 },
             author_email: "test@test.com".into(),
+            close_behavior: CloseBehavior::Exit,
         };
 
         config.save(&path).unwrap();
@@ -153,6 +180,7 @@ interval_secs = 1
         assert_eq!(loaded.scan.interval_secs, 45);
         assert_eq!(loaded.scan.since_days, 14);
         assert_eq!(loaded.author_email, "test@test.com");
+        assert_eq!(loaded.close_behavior, CloseBehavior::Exit);
     }
 
     // --- TDD: add_repo / remove_repo / set_author_email ---
@@ -218,5 +246,49 @@ interval_secs = 1
         assert_eq!(config.author_email, "");
         config.set_author_email("dev@example.com".into());
         assert_eq!(config.author_email, "dev@example.com");
+    }
+
+    // --- TDD: CloseBehavior ---
+
+    #[test]
+    fn test_close_behavior_defaults_to_minimize() {
+        let config = Config::parse("").unwrap();
+        assert_eq!(config.close_behavior, CloseBehavior::Minimize);
+    }
+
+    #[test]
+    fn test_close_behavior_parsed_from_toml() {
+        let toml_str = r#"close_behavior = "exit""#;
+        let config = Config::parse(toml_str).unwrap();
+        assert_eq!(config.close_behavior, CloseBehavior::Exit);
+    }
+
+    #[test]
+    fn test_close_behavior_invalid_value_errors() {
+        let toml_str = r#"close_behavior = "nonsense""#;
+        assert!(Config::parse(toml_str).is_err());
+    }
+
+    #[test]
+    fn test_set_close_behavior() {
+        let mut config = Config::default();
+        assert_eq!(config.close_behavior, CloseBehavior::Minimize);
+        config.set_close_behavior(CloseBehavior::Exit);
+        assert_eq!(config.close_behavior, CloseBehavior::Exit);
+    }
+
+    #[test]
+    fn test_close_behavior_roundtrip() {
+        use tempfile::TempDir;
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("config.toml");
+
+        let config = Config {
+            close_behavior: CloseBehavior::Exit,
+            ..Default::default()
+        };
+        config.save(&path).unwrap();
+        let loaded = Config::load(&path).unwrap();
+        assert_eq!(loaded.close_behavior, CloseBehavior::Exit);
     }
 }

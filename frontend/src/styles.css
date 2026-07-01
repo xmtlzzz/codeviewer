@@ -276,6 +276,27 @@ body {
   display: inline-block;
 }
 
+.scan-error-box {
+  margin: 0 0 24px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--negative) 35%, var(--divider));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--negative) 9%, var(--bg-card));
+  color: var(--text-primary);
+}
+
+.scan-error-title {
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.scan-error-line {
+  font-size: 12px;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
 /* ============================================================
    Section Title
    ============================================================ */

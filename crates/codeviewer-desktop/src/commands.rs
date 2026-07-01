@@ -8,7 +8,23 @@ pub struct AppState {
     pub config_path: PathBuf,
 }
 
-fn scan_all(config: &config::Config) -> (Vec<Vec<models::DailyStat>>, Vec<String>) {
+#[derive(Clone, serde::Serialize)]
+pub struct ScanResult {
+    pub summary: models::Summary,
+    pub errors: Vec<String>,
+}
+
+fn repo_name_for(entry: &config::RepoEntry) -> String {
+    entry.name.clone().unwrap_or_else(|| {
+        std::path::Path::new(&entry.path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string()
+    })
+}
+
+pub fn scan_config(config: &config::Config) -> ScanResult {
     let opts = scanner::ScanOptions {
         author_email: if config.author_email.is_empty() {
             None
@@ -17,22 +33,34 @@ fn scan_all(config: &config::Config) -> (Vec<Vec<models::DailyStat>>, Vec<String
         },
         since_days: Some(config.scan.since_days),
     };
-    let mut all = Vec::new();
+    let mut repos = Vec::new();
     let mut errors = Vec::new();
-    for r in &config.repos {
-        match scanner::scan_repo(std::path::Path::new(&r.path), &opts) {
-            Ok(stats) => all.push(stats),
-            Err(e) => errors.push(format!("{}: {}", r.path, e)),
+
+    for entry in &config.repos {
+        match scanner::scan_repo(std::path::Path::new(&entry.path), &opts) {
+            Ok(stats) => repos.push(models::RepoStat {
+                repo_path: entry.path.clone(),
+                repo_name: repo_name_for(entry),
+                daily_stats: stats,
+            }),
+            Err(e) => errors.push(format!("{}: {}", entry.path, e)),
         }
     }
-    (all, errors)
+
+    ScanResult {
+        summary: aggregator::aggregate(repos),
+        errors,
+    }
+}
+
+pub fn scan_state(state: &AppState) -> ScanResult {
+    let config = state.config.lock().unwrap().clone();
+    scan_config(&config)
 }
 
 #[tauri::command]
 pub fn get_summary(state: State<'_, AppState>) -> models::Summary {
-    let config = state.config.lock().unwrap().clone();
-    let (all, _errors) = scan_all(&config);
-    aggregator::aggregate(all)
+    scan_state(&state).summary
 }
 
 #[tauri::command]
@@ -40,18 +68,9 @@ pub fn get_config(state: State<'_, AppState>) -> config::Config {
     state.config.lock().unwrap().clone()
 }
 
-#[derive(serde::Serialize)]
-pub struct ScanResult {
-    pub summary: models::Summary,
-    pub errors: Vec<String>,
-}
-
 #[tauri::command]
 pub fn scan_now(state: State<'_, AppState>) -> ScanResult {
-    let config = state.config.lock().unwrap().clone();
-    let (all, errors) = scan_all(&config);
-    let summary = aggregator::aggregate(all);
-    ScanResult { summary, errors }
+    scan_state(&state)
 }
 
 /// Add a repo, persist config, return updated config.

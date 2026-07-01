@@ -18,6 +18,10 @@ export function onStatsUpdated(callback: (summary: Summary) => void) {
   return listen<Summary>("stats-updated", (event) => callback(event.payload));
 }
 
+export function onScanResultUpdated(callback: (result: ScanResult) => void) {
+  return listen<ScanResult>("stats-updated", (event) => callback(event.payload));
+}
+
 export async function addRepo(path: string, name?: string): Promise<Config> {
   return invoke<Config>("add_repo", { path, name: name ?? null });
 }

@@ -24,6 +24,18 @@ pub struct RepoStat {
     pub daily_stats: Vec<DailyStat>,
 }
 
+/// Per-repo summary for the dashboard repo list and detail page.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RepoSummary {
+    pub name: String,
+    pub insertions: u64,
+    pub deletions: u64,
+    pub commits: u32,
+    pub files_changed: u32,
+    pub last_date: NaiveDate,
+    pub daily_stats: Vec<DailyStat>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Summary {
     pub today_insertions: u64,
@@ -34,6 +46,7 @@ pub struct Summary {
     pub total_deletions: u64,
     pub total_commits: u32,
     pub days: Vec<DailyStat>,
+    pub repo_stats: Vec<RepoSummary>,
 }
 
 #[cfg(test)]
@@ -99,5 +112,34 @@ mod tests {
         };
 
         assert_eq!(stat_zero.net_lines(), 0);
+    }
+
+    #[test]
+    fn test_repo_summary_serde_roundtrip() {
+        let daily = vec![DailyStat {
+            date: NaiveDate::from_ymd_opt(2026, 6, 27).unwrap(),
+            insertions: 100,
+            deletions: 20,
+            files_changed: 3,
+            commits: 2,
+            repo_name: "my-repo".to_string(),
+        }];
+        let summary = RepoSummary {
+            name: "my-repo".to_string(),
+            insertions: 100,
+            deletions: 20,
+            commits: 2,
+            files_changed: 3,
+            last_date: NaiveDate::from_ymd_opt(2026, 6, 27).unwrap(),
+            daily_stats: daily,
+        };
+
+        let json = serde_json::to_string(&summary).unwrap();
+        let decoded: RepoSummary = serde_json::from_str(&json).unwrap();
+        assert_eq!(decoded.name, "my-repo");
+        assert_eq!(decoded.insertions, 100);
+        assert_eq!(decoded.commits, 2);
+        assert_eq!(decoded.daily_stats.len(), 1);
+        assert_eq!(decoded.daily_stats[0].repo_name, "my-repo");
     }
 }

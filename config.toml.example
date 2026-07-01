@@ -1,6 +1,7 @@
 # CodeViewer 配置
 
 author_email = "your-email@example.com"  # 只统计此作者的提交，留空则统计所有人
+close_behavior = "minimize" # minimize hides to tray on close, exit quits the app
 
 [[repos]]
 # Windows 路径用单引号（literal string）避免反斜杠转义问题：

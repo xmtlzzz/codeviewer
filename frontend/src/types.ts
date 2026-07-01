@@ -16,6 +16,17 @@ export interface Summary {
   total_deletions: number;
   total_commits: number;
   days: DailyStat[];
+  repo_stats: RepoSummary[];
+}
+
+export interface RepoSummary {
+  name: string;
+  insertions: number;
+  deletions: number;
+  commits: number;
+  files_changed: number;
+  last_date: string;
+  daily_stats: DailyStat[];
 }
 
 export interface RepoEntry {
@@ -28,10 +39,13 @@ export interface ScanConfig {
   since_days: number;
 }
 
+export type CloseBehavior = "minimize" | "exit";
+
 export interface Config {
   repos: RepoEntry[];
   scan: ScanConfig;
   author_email: string;
+  close_behavior: CloseBehavior;
 }
 
 export interface ScanResult {

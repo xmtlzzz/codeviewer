@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getSummary, onStatsUpdated, getConfig } from "./api";
+import { scanNow, onScanResultUpdated, getConfig } from "./api";
 import type { Summary, Config } from "./types";
 import { Header } from "./components/Header";
 import { Dashboard } from "./components/Dashboard";
@@ -33,6 +33,7 @@ export default function App() {
   const [page, setPage] = useState<Page>("dashboard");
   const [summary, setSummary] = useState<Summary | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
+  const [scanErrors, setScanErrors] = useState<string[]>([]);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readMode);
 
   // Apply theme + listen for system changes in auto mode
@@ -53,9 +54,17 @@ export default function App() {
 
   // Fetch data + subscribe to background scanner events
   useEffect(() => {
-    getSummary().then(setSummary).catch(() => undefined);
+    scanNow()
+      .then((result) => {
+        setSummary(result.summary);
+        setScanErrors(result.errors);
+      })
+      .catch(() => undefined);
     getConfig().then(setConfig).catch(() => undefined);
-    const unlistenPromise = onStatsUpdated((s) => setSummary(s));
+    const unlistenPromise = onScanResultUpdated((result) => {
+      setSummary(result.summary);
+      setScanErrors(result.errors);
+    });
     return () => {
       unlistenPromise.then((fn) => fn());
     };
@@ -76,7 +85,12 @@ export default function App() {
   // When config changes (add/remove repo, email update), refresh summary too
   const handleConfigChange = (updated: Config) => {
     setConfig(updated);
-    getSummary().then(setSummary).catch(() => undefined);
+    scanNow()
+      .then((result) => {
+        setSummary(result.summary);
+        setScanErrors(result.errors);
+      })
+      .catch(() => undefined);
   };
 
   const isDark = getEffectiveTheme(themeMode) === "dark";
@@ -93,7 +107,7 @@ export default function App() {
       />
       {page === "dashboard" &&
         (summary ? (
-          <Dashboard summary={summary} />
+          <Dashboard summary={summary} scanErrors={scanErrors} />
         ) : (
           <section className="page active">
             <div className="total-section">

@@ -1,4 +1,4 @@
-use codeviewer_core::{aggregator, config, scanner, storage, models};
+use codeviewer_core::{aggregator, config, models, scanner, storage};
 use git2::{Repository, Signature};
 use std::fs;
 use std::path::Path;
@@ -16,13 +16,16 @@ fn make_repo_with_commit(dir: &Path, files: &[(&str, &str)]) {
     let mut index = repo.index().unwrap();
     for (path, content) in files {
         let full = dir.join(path);
-        if let Some(p) = full.parent() { fs::create_dir_all(p).unwrap(); }
+        if let Some(p) = full.parent() {
+            fs::create_dir_all(p).unwrap();
+        }
         fs::write(&full, content).unwrap();
         index.add_path(Path::new(path)).unwrap();
     }
     index.write().unwrap();
     let tree = repo.find_tree(index.write_tree().unwrap()).unwrap();
-    repo.commit(Some("HEAD"), &sig, &sig, "test commit", &tree, &[]).unwrap();
+    repo.commit(Some("HEAD"), &sig, &sig, "test commit", &tree, &[])
+        .unwrap();
 }
 
 /// Create a git repo and make two commits (to test multi-commit aggregation)
@@ -40,17 +43,27 @@ fn make_repo_with_two_commits(dir: &Path) {
     index.add_path(Path::new("main.rs")).unwrap();
     index.write().unwrap();
     let tree = repo.find_tree(index.write_tree().unwrap()).unwrap();
-    repo.commit(Some("HEAD"), &sig, &sig, "first", &tree, &[]).unwrap();
+    repo.commit(Some("HEAD"), &sig, &sig, "first", &tree, &[])
+        .unwrap();
 
     // Commit 2: add 3 more lines in a new file
     let mut index = repo.index().unwrap();
-    fs::write(dir.join("lib.rs"), "pub fn hello() {\n    println!(\"hi\");\n}\n").unwrap();
+    fs::write(
+        dir.join("lib.rs"),
+        "pub fn hello() {\n    println!(\"hi\");\n}\n",
+    )
+    .unwrap();
     index.add_path(Path::new("lib.rs")).unwrap();
     index.write().unwrap();
     let tree = repo.find_tree(index.write_tree().unwrap()).unwrap();
-    let parent = repo.head().ok().and_then(|r| r.target()).map(|oid| repo.find_commit(oid).unwrap());
+    let parent = repo
+        .head()
+        .ok()
+        .and_then(|r| r.target())
+        .map(|oid| repo.find_commit(oid).unwrap());
     let parents: Vec<&git2::Commit> = parent.iter().collect();
-    repo.commit(Some("HEAD"), &sig, &sig, "second", &tree, &parents).unwrap();
+    repo.commit(Some("HEAD"), &sig, &sig, "second", &tree, &parents)
+        .unwrap();
 }
 
 #[test]
@@ -72,11 +85,26 @@ fn test_full_pipeline_scan_aggregate_save_load() {
     assert_eq!(stats2[0].insertions, 1, "repo2: 1 line inserted");
 
     // Aggregate
-    let summary = aggregator::aggregate(vec![stats1.clone(), stats2.clone()]);
+    let summary = aggregator::aggregate(vec![
+        models::RepoStat {
+            repo_path: dir1.path().to_string_lossy().into_owned(),
+            repo_name: "repo1".to_string(),
+            daily_stats: stats1.clone(),
+        },
+        models::RepoStat {
+            repo_path: dir2.path().to_string_lossy().into_owned(),
+            repo_name: "repo2".to_string(),
+            daily_stats: stats2.clone(),
+        },
+    ]);
     assert_eq!(summary.total_insertions, 3, "2 + 1 = 3 total insertions");
     assert_eq!(summary.total_commits, 2, "1 + 1 = 2 total commits");
     assert_eq!(summary.today_insertions, 3, "all commits are today");
-    assert_eq!(summary.days.len(), 1, "both repos committed today, should merge to 1 day");
+    assert_eq!(
+        summary.days.len(),
+        1,
+        "both repos committed today, should merge to 1 day"
+    );
 
     // Save to JSON
     let repo_stats = vec![
@@ -113,10 +141,17 @@ fn test_multi_commit_aggregation() {
     let stats = scanner::scan_repo(dir.path(), &opts).unwrap();
 
     assert_eq!(stats.len(), 1, "both commits today, 1 day entry");
-    assert_eq!(stats[0].insertions, 4, "1 + 3 = 4 insertions (fn main line + 3 lib.rs lines)");
+    assert_eq!(
+        stats[0].insertions, 4,
+        "1 + 3 = 4 insertions (fn main line + 3 lib.rs lines)"
+    );
     assert_eq!(stats[0].commits, 2, "2 commits");
 
-    let summary = aggregator::aggregate(vec![stats]);
+    let summary = aggregator::aggregate(vec![models::RepoStat {
+        repo_path: dir.path().to_string_lossy().into_owned(),
+        repo_name: "repo".to_string(),
+        daily_stats: stats,
+    }]);
     assert_eq!(summary.total_insertions, 4);
     assert_eq!(summary.total_commits, 2);
 }
@@ -171,6 +206,7 @@ fn test_config_save_and_load_roundtrip() {
             since_days: 14,
         },
         author_email: "user@example.com".to_string(),
+        close_behavior: config::CloseBehavior::Minimize,
     };
 
     original.save(&config_path).unwrap();
@@ -198,7 +234,11 @@ fn test_scan_nonexistent_repo_skipped_in_aggregate() {
     assert!(stats2.is_err());
 
     // Aggregate only the successful scan
-    let summary = aggregator::aggregate(vec![stats1]);
+    let summary = aggregator::aggregate(vec![models::RepoStat {
+        repo_path: dir1.path().to_string_lossy().into_owned(),
+        repo_name: "repo1".to_string(),
+        daily_stats: stats1,
+    }]);
     assert_eq!(summary.total_insertions, 1);
     assert_eq!(summary.total_commits, 1);
 }

@@ -1,4 +1,4 @@
-use codeviewer_core::{aggregator, config, scanner, storage, models};
+use codeviewer_core::{aggregator, config, models, scanner, storage};
 use std::path::PathBuf;
 
 fn config_path() -> PathBuf {
@@ -12,7 +12,17 @@ fn config_path() -> PathBuf {
         })
 }
 
-fn scan_all(config: &config::Config) -> Vec<Vec<models::DailyStat>> {
+fn repo_name_for(entry: &config::RepoEntry) -> String {
+    entry.name.clone().unwrap_or_else(|| {
+        std::path::Path::new(&entry.path)
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string()
+    })
+}
+
+fn scan_all(config: &config::Config) -> (Vec<models::RepoStat>, Vec<String>) {
     let opts = scanner::ScanOptions {
         author_email: if config.author_email.is_empty() {
             None
@@ -21,10 +31,22 @@ fn scan_all(config: &config::Config) -> Vec<Vec<models::DailyStat>> {
         },
         since_days: Some(config.scan.since_days),
     };
-    config.repos
-        .iter()
-        .filter_map(|r| scanner::scan_repo(std::path::Path::new(&r.path), &opts).ok())
-        .collect()
+
+    let mut repos = Vec::new();
+    let mut errors = Vec::new();
+
+    for entry in &config.repos {
+        match scanner::scan_repo(std::path::Path::new(&entry.path), &opts) {
+            Ok(stats) => repos.push(models::RepoStat {
+                repo_path: entry.path.clone(),
+                repo_name: repo_name_for(entry),
+                daily_stats: stats,
+            }),
+            Err(e) => errors.push(format!("{}: {}", entry.path, e)),
+        }
+    }
+
+    (repos, errors)
 }
 
 fn main() {
@@ -35,7 +57,11 @@ fn main() {
 
     match cmd {
         "today" => {
-            let summary = aggregator::aggregate(scan_all(&config));
+            let (repos, errors) = scan_all(&config);
+            for error in &errors {
+                eprintln!("scan skipped: {error}");
+            }
+            let summary = aggregator::aggregate(repos);
             let net = summary.today_insertions as i64 - summary.today_deletions as i64;
             if summary.today_commits == 0 {
                 println!("今日: 暂无提交记录");
@@ -50,7 +76,11 @@ fn main() {
             }
         }
         "week" => {
-            let summary = aggregator::aggregate(scan_all(&config));
+            let (repos, errors) = scan_all(&config);
+            for error in &errors {
+                eprintln!("scan skipped: {error}");
+            }
+            let summary = aggregator::aggregate(repos);
             let week_ago = chrono::Local::now().date_naive() - chrono::Duration::days(7);
             println!("最近 7 天:");
             for d in &summary.days {
@@ -67,21 +97,10 @@ fn main() {
             );
         }
         "scan" => {
-            let all = scan_all(&config);
-            let repo_stats: Vec<models::RepoStat> = config
-                .repos
-                .iter()
-                .zip(all.iter())
-                .map(|(r, stats)| models::RepoStat {
-                    repo_path: r.path.clone(),
-                    repo_name: std::path::Path::new(&r.path)
-                        .file_name()
-                        .and_then(|n| n.to_str())
-                        .unwrap_or("unknown")
-                        .to_string(),
-                    daily_stats: stats.clone(),
-                })
-                .collect();
+            let (repo_stats, errors) = scan_all(&config);
+            for error in &errors {
+                eprintln!("scan skipped: {error}");
+            }
 
             let store_path = dirs::data_dir()
                 .unwrap_or_else(|| PathBuf::from("."))

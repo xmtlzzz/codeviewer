@@ -1,7 +1,7 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Manager,
+    Manager,
 };
 
 pub fn create_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
@@ -23,7 +23,10 @@ pub fn create_tray(app: &tauri::AppHandle) -> tauri::Result<()> {
                 }
             }
             "scan" => {
-                let _ = app.emit("trigger-scan", ());
+                let app = app.clone();
+                tauri::async_runtime::spawn(async move {
+                    let _ = crate::scanner_task::emit_scan_result(app).await;
+                });
             }
             "quit" => {
                 app.exit(0);
