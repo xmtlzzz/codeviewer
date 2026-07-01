@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "tauri:dev": "cd ../crates/codeviewer-desktop && tauri dev",
+    "tauri:build": "cd ../crates/codeviewer-desktop && tauri build"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",
@@ -18,6 +20,7 @@
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
+    "@tauri-apps/cli": "^2.8.0",
     "@vitejs/plugin-react": "^6.0.2",
     "oxlint": "^1.69.0",
     "typescript": "~6.0.2",

@@ -30,3 +30,19 @@ If you are developing a production application, we recommend enabling type-aware
 ```
 
 See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+
+## Run
+
+In PowerShell on Windows, use `npm.cmd`:
+
+```powershell
+npm.cmd run dev
+npm.cmd run tauri:dev
+```
+
+## Build
+
+```powershell
+npm.cmd run build
+npm.cmd run tauri:build
+```

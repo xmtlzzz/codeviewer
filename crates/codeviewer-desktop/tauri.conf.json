@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "identifier": "com.codeviewer.desktop",
   "build": {
-    "beforeDevCommand": "",
+    "beforeDevCommand": "npm.cmd --prefix D:\\Desktop\\code\\Rust\\codeviewer\\frontend run dev",
     "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "",
+    "beforeBuildCommand": "npm.cmd --prefix D:\\Desktop\\code\\Rust\\codeviewer\\frontend run build",
     "frontendDist": "../../frontend/dist"
   },
   "app": {
