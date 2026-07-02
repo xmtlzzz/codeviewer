@@ -681,6 +681,18 @@ body {
   line-height: 1.5;
 }
 
+.github-fields {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.github-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

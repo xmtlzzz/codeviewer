@@ -60,17 +60,15 @@ pub fn aggregate(repos: Vec<RepoStat>) -> Summary {
             entry.commits += stat.commits;
         }
 
-        if let Some(last_date) = repo_last_date {
-            repo_summaries.push(RepoSummary {
-                name: repo.repo_name,
-                insertions: repo_insertions,
-                deletions: repo_deletions,
-                commits: repo_commits,
-                files_changed: repo_files_changed,
-                last_date,
-                daily_stats: repo.daily_stats,
-            });
-        }
+        repo_summaries.push(RepoSummary {
+            name: repo.repo_name,
+            insertions: repo_insertions,
+            deletions: repo_deletions,
+            commits: repo_commits,
+            files_changed: repo_files_changed,
+            last_date: repo_last_date,
+            daily_stats: repo.daily_stats,
+        });
     }
 
     repo_summaries.sort_by(|a, b| {
@@ -242,7 +240,10 @@ mod tests {
         assert_eq!(repo_a.deletions, 15);
         assert_eq!(repo_a.commits, 3);
         assert_eq!(repo_a.files_changed, 2);
-        assert_eq!(repo_a.last_date.format("%Y-%m-%d").to_string(), today);
+        assert_eq!(
+            repo_a.last_date.unwrap().format("%Y-%m-%d").to_string(),
+            today
+        );
         assert_eq!(repo_a.daily_stats.len(), 2);
 
         let repo_b = summary
@@ -253,5 +254,28 @@ mod tests {
         assert_eq!(repo_b.insertions, 50);
         assert_eq!(repo_b.deletions, 2);
         assert_eq!(repo_b.commits, 1);
+    }
+
+    #[test]
+    fn test_repo_stats_include_repos_without_activity() {
+        let today = today_str();
+        let summary = aggregate(vec![
+            make_repo("active-repo", vec![make_stat(&today, "active-repo", 10, 2, 1)]),
+            make_repo("idle-repo", vec![]),
+        ]);
+
+        assert_eq!(summary.repo_stats.len(), 2);
+
+        let idle_repo = summary
+            .repo_stats
+            .iter()
+            .find(|r| r.name == "idle-repo")
+            .unwrap();
+        assert_eq!(idle_repo.insertions, 0);
+        assert_eq!(idle_repo.deletions, 0);
+        assert_eq!(idle_repo.commits, 0);
+        assert_eq!(idle_repo.files_changed, 0);
+        assert_eq!(idle_repo.last_date, None);
+        assert!(idle_repo.daily_stats.is_empty());
     }
 }

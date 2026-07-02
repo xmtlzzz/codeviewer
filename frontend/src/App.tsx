@@ -36,7 +36,6 @@ export default function App() {
   const [scanErrors, setScanErrors] = useState<string[]>([]);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readMode);
 
-  // Apply theme + listen for system changes in auto mode
   useEffect(() => {
     const effective = getEffectiveTheme(themeMode);
     document.documentElement.dataset.theme = effective;
@@ -52,7 +51,6 @@ export default function App() {
     return () => mq.removeEventListener("change", handler);
   }, [themeMode]);
 
-  // Fetch data + subscribe to background scanner events
   useEffect(() => {
     scanNow()
       .then((result) => {
@@ -82,7 +80,6 @@ export default function App() {
     setThemeMode(mode);
   };
 
-  // When config changes (add/remove repo, email update), refresh summary too
   const handleConfigChange = (updated: Config) => {
     setConfig(updated);
     scanNow()
@@ -99,7 +96,7 @@ export default function App() {
     <div className="app">
       <Header
         page={page}
-        title={page === "settings" ? "设置" : "CodeViewer"}
+        title={page === "settings" ? "Settings" : "CodeViewer"}
         isDark={isDark}
         onBack={() => setPage("dashboard")}
         onSettings={() => setPage("settings")}
@@ -111,9 +108,9 @@ export default function App() {
         ) : (
           <section className="page active">
             <div className="total-section">
-              <div className="total-label">总提交代码行数</div>
-              <div className="total-number mono">—</div>
-              <div className="total-meta">加载中...</div>
+              <div className="total-label">Net changed lines</div>
+              <div className="total-number mono">...</div>
+              <div className="total-meta">Loading...</div>
             </div>
           </section>
         ))}

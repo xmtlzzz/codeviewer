@@ -109,3 +109,23 @@ pub fn set_author_email(
     guard.save(&state.config_path).map_err(|e| e.to_string())?;
     Ok(guard.clone())
 }
+
+#[tauri::command]
+pub fn set_github_connection(
+    state: State<'_, AppState>,
+    username: String,
+    token: String,
+) -> Result<config::Config, String> {
+    let mut guard = state.config.lock().unwrap();
+    guard.set_github_connection(username, token);
+    guard.save(&state.config_path).map_err(|e| e.to_string())?;
+    Ok(guard.clone())
+}
+
+#[tauri::command]
+pub fn clear_github_connection(state: State<'_, AppState>) -> Result<config::Config, String> {
+    let mut guard = state.config.lock().unwrap();
+    guard.clear_github_connection();
+    guard.save(&state.config_path).map_err(|e| e.to_string())?;
+    Ok(guard.clone())
+}

@@ -206,6 +206,7 @@ fn test_config_save_and_load_roundtrip() {
             since_days: 14,
         },
         author_email: "user@example.com".to_string(),
+        github: config::GithubConfig::default(),
         close_behavior: config::CloseBehavior::Minimize,
     };
 

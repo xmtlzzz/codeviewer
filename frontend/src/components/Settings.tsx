@@ -1,7 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Config } from "../types";
-import { addRepo, removeRepo, setAuthorEmail } from "../api";
-import { GithubIcon, PlusIcon, SunIcon, MoonIcon, MonitorIcon, TrashIcon } from "./icons";
+import {
+  addRepo,
+  removeRepo,
+  setAuthorEmail,
+  setGithubConnection,
+  clearGithubConnection,
+} from "../api";
+import {
+  GithubIcon,
+  PlusIcon,
+  SunIcon,
+  MoonIcon,
+  MonitorIcon,
+  TrashIcon,
+} from "./icons";
 
 interface SettingsProps {
   config: Config;
@@ -14,16 +27,29 @@ export type ThemeMode = "light" | "dark" | "auto";
 
 const APP_VERSION = "0.1.0";
 
-export function Settings({ config, themeMode, onSetTheme, onConfigChange }: SettingsProps) {
+export function Settings({
+  config,
+  themeMode,
+  onSetTheme,
+  onConfigChange,
+}: SettingsProps) {
   const [newRepoPath, setNewRepoPath] = useState("");
   const [emailInput, setEmailInput] = useState(config.author_email);
+  const [githubUsername, setGithubUsername] = useState(config.github.username);
+  const [githubToken, setGithubToken] = useState(config.github.token);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setEmailInput(config.author_email);
+    setGithubUsername(config.github.username);
+    setGithubToken(config.github.token);
+  }, [config]);
 
   const repoCount = config.repos.length;
   const intervalLabel =
     config.scan.interval_secs >= 60
-      ? `${Math.round(config.scan.interval_secs / 60)} 分钟`
-      : `${config.scan.interval_secs} 秒`;
+      ? `${Math.round(config.scan.interval_secs / 60)} min`
+      : `${config.scan.interval_secs} sec`;
 
   const handleAddRepo = async () => {
     const path = newRepoPath.trim();
@@ -64,40 +90,70 @@ export function Settings({ config, themeMode, onSetTheme, onConfigChange }: Sett
     }
   };
 
+  const handleConnectGithub = async () => {
+    setSaving(true);
+    try {
+      const updated = await setGithubConnection(githubUsername, githubToken);
+      onConfigChange(updated);
+    } catch (e) {
+      console.error("set_github_connection failed:", e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDisconnectGithub = async () => {
+    setSaving(true);
+    try {
+      const updated = await clearGithubConnection();
+      onConfigChange(updated);
+    } catch (e) {
+      console.error("clear_github_connection failed:", e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const githubReady =
+    githubUsername.trim().length > 0 && githubToken.trim().length > 0;
+  const githubDirty =
+    githubUsername !== config.github.username || githubToken !== config.github.token;
+
   return (
     <section className="page active">
-      {/* Basic Info */}
       <div className="settings-section">
         <div className="section-title">
-          <span>基本信息</span>
+          <span>General</span>
         </div>
         <div className="settings-card">
           <div className="info-row">
-            <span className="info-label">应用名称</span>
+            <span className="info-label">Application</span>
             <span className="info-value">CodeViewer</span>
           </div>
           <div className="info-row">
-            <span className="info-label">版本</span>
+            <span className="info-label">Version</span>
             <span className="info-value mono">{APP_VERSION}</span>
           </div>
           <div className="info-row">
-            <span className="info-label">运行状态</span>
+            <span className="info-label">Status</span>
             <span className="info-value">
               <span className="status-dot on" />
-              运行中
+              Running
             </span>
           </div>
           <div className="info-row">
-            <span className="info-label">扫描间隔</span>
+            <span className="info-label">Scan interval</span>
             <span className="info-value mono">{intervalLabel}</span>
           </div>
           <div className="info-row">
-            <span className="info-label">统计天数</span>
-            <span className="info-value mono">{config.scan.since_days} 天</span>
+            <span className="info-label">Scan window</span>
+            <span className="info-value mono">{config.scan.since_days} days</span>
           </div>
-          {/* Author Email — editable */}
-          <div className="info-row" style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}>
-            <span className="info-label">作者邮箱</span>
+          <div
+            className="info-row"
+            style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}
+          >
+            <span className="info-label">Author email</span>
             <div className="email-edit">
               <input
                 className="settings-input"
@@ -105,7 +161,9 @@ export function Settings({ config, themeMode, onSetTheme, onConfigChange }: Sett
                 placeholder="your-email@example.com"
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleSaveEmail(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSaveEmail();
+                }}
               />
               <button
                 className="btn"
@@ -113,54 +171,73 @@ export function Settings({ config, themeMode, onSetTheme, onConfigChange }: Sett
                 disabled={saving || emailInput.trim() === config.author_email}
                 onClick={handleSaveEmail}
               >
-                保存
+                Save
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* GitHub Sync */}
       <div className="settings-section">
         <div className="section-title">
-          <span>GitHub 同步</span>
+          <span>GitHub</span>
         </div>
         <div className="settings-card">
           <div className="github-box">
             <div className="github-box-title">
               <GithubIcon />
-              GitHub 账号
+              GitHub account
             </div>
             <div className="github-box-desc">
-              绑定 GitHub 账号后，可同步远程仓库的 PR、Issue 等统计数据。
+              {config.github.connected
+                ? `Connected as @${config.github.username}. This stores local credentials for future GitHub sync support.`
+                : "Save a GitHub username and token to enable account connection in settings."}
             </div>
-            <button className="btn" type="button" disabled style={{ opacity: 0.7, cursor: "not-allowed" }}>
-              <GithubIcon />
-              连接 GitHub 账号
-            </button>
-          </div>
-          <div className="info-row">
-            <span className="info-label">自动同步</span>
-            <button
-              className="toggle on"
-              type="button"
-              aria-label="自动同步"
-              disabled
-              style={{ cursor: "not-allowed", opacity: 0.7 }}
-            />
-          </div>
-          <div className="info-row">
-            <span className="info-label">同步间隔</span>
-            <span className="info-value mono">{intervalLabel}</span>
+            <div className="github-fields">
+              <input
+                className="settings-input"
+                type="text"
+                placeholder="GitHub username"
+                value={githubUsername}
+                onChange={(e) => setGithubUsername(e.target.value)}
+                disabled={saving}
+              />
+              <input
+                className="settings-input"
+                type="password"
+                placeholder="GitHub personal access token"
+                value={githubToken}
+                onChange={(e) => setGithubToken(e.target.value)}
+                disabled={saving}
+              />
+            </div>
+            <div className="github-actions">
+              <button
+                className={`btn${config.github.connected ? " connected" : ""}`}
+                type="button"
+                disabled={saving || !githubReady || !githubDirty}
+                onClick={handleConnectGithub}
+              >
+                <GithubIcon />
+                {config.github.connected ? "Update connection" : "Connect GitHub"}
+              </button>
+              <button
+                className="btn connected"
+                type="button"
+                disabled={saving || !config.github.connected}
+                onClick={handleDisconnectGithub}
+              >
+                Disconnect
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Repo Management — interactive */}
       <div className="settings-section">
         <div className="section-title">
-          <span>仓库管理</span>
-          <span className="count">{repoCount} 个仓库</span>
+          <span>Repositories</span>
+          <span className="count">{repoCount} repos</span>
         </div>
         <div className="settings-card">
           {config.repos.map((repo, i) => (
@@ -173,7 +250,7 @@ export function Settings({ config, themeMode, onSetTheme, onConfigChange }: Sett
               <button
                 className="repo-delete"
                 type="button"
-                title="删除仓库"
+                title="Remove repository"
                 disabled={saving}
                 onClick={() => handleRemoveRepo(repo.path)}
               >
@@ -184,18 +261,19 @@ export function Settings({ config, themeMode, onSetTheme, onConfigChange }: Sett
           {config.repos.length === 0 && (
             <div className="repo-row">
               <span className="repo-dot inactive" />
-              <span className="repo-name">尚未添加仓库</span>
+              <span className="repo-name">No repositories added</span>
             </div>
           )}
-          {/* Add repo input */}
           <div className="input-row">
             <input
               className="settings-input"
               type="text"
-              placeholder="输入仓库路径，如 D:\code\my-project"
+              placeholder="Repository path, e.g. D:\\code\\my-project"
               value={newRepoPath}
               onChange={(e) => setNewRepoPath(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleAddRepo(); }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddRepo();
+              }}
               disabled={saving}
             />
             <button
@@ -205,23 +283,22 @@ export function Settings({ config, themeMode, onSetTheme, onConfigChange }: Sett
               onClick={handleAddRepo}
             >
               <PlusIcon />
-              添加
+              Add
             </button>
           </div>
         </div>
       </div>
 
-      {/* Appearance */}
       <div className="settings-section">
         <div className="section-title">
-          <span>外观</span>
+          <span>Appearance</span>
         </div>
         <div className="settings-card">
           <div
             className="info-row"
             style={{ flexDirection: "column", alignItems: "stretch", gap: 10 }}
           >
-            <span className="info-label">主题模式</span>
+            <span className="info-label">Theme</span>
             <div className="theme-selector">
               <button
                 className={`theme-option${themeMode === "light" ? " active" : ""}`}
@@ -229,7 +306,7 @@ export function Settings({ config, themeMode, onSetTheme, onConfigChange }: Sett
                 type="button"
               >
                 <SunIcon />
-                浅色
+                Light
               </button>
               <button
                 className={`theme-option${themeMode === "dark" ? " active" : ""}`}
@@ -237,7 +314,7 @@ export function Settings({ config, themeMode, onSetTheme, onConfigChange }: Sett
                 type="button"
               >
                 <MoonIcon />
-                深色
+                Dark
               </button>
               <button
                 className={`theme-option${themeMode === "auto" ? " active" : ""}`}
@@ -245,7 +322,7 @@ export function Settings({ config, themeMode, onSetTheme, onConfigChange }: Sett
                 type="button"
               >
                 <MonitorIcon />
-                跟随系统
+                Auto
               </button>
             </div>
           </div>

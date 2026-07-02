@@ -46,6 +46,8 @@ pub fn run() {
             commands::add_repo,
             commands::remove_repo,
             commands::set_author_email,
+            commands::set_github_connection,
+            commands::clear_github_connection,
         ])
         .run(tauri::generate_context!())
         .expect("error while running codeviewer application");

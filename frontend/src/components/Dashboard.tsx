@@ -11,14 +11,21 @@ function fmt(n: number): string {
   return n.toLocaleString();
 }
 
+function fmtSigned(n: number): string {
+  if (n > 0) return `+${fmt(n)}`;
+  if (n < 0) return `-${fmt(Math.abs(n))}`;
+  return "0";
+}
+
 export function Dashboard({ summary, scanErrors }: DashboardProps) {
   const repos = summary.repo_stats;
+  const totalNet = summary.total_insertions - summary.total_deletions;
 
   return (
     <section className="page active">
       <div className="total-section">
-        <div className="total-label">Total code lines</div>
-        <div className="total-number mono">{fmt(summary.total_insertions)}</div>
+        <div className="total-label">Net changed lines</div>
+        <div className="total-number mono">{fmtSigned(totalNet)}</div>
         <div className="total-meta">
           <span>{fmt(summary.total_commits)} commits</span>
           <span className="dot" />
@@ -52,13 +59,21 @@ export function Dashboard({ summary, scanErrors }: DashboardProps) {
           </div>
         )}
         {repos.map((repo) => (
-          <div className="lang-card" key={`${repo.name}-${repo.last_date}`} role="listitem">
+          <div
+            className="lang-card"
+            key={`${repo.name}-${repo.last_date ?? "none"}`}
+            role="listitem"
+          >
             <div className="lang-icon">
               <FileCodeIcon />
             </div>
             <div className="lang-body">
               <div className="lang-name">{repo.name}</div>
-              <div className="lang-updated">Last updated {repo.last_date || "-"}</div>
+              <div className="lang-updated">
+                {repo.last_date
+                  ? `Last updated ${repo.last_date}`
+                  : "No activity in current scan window"}
+              </div>
             </div>
             <div className="lang-stats">
               <div className="lang-stat">
@@ -66,8 +81,18 @@ export function Dashboard({ summary, scanErrors }: DashboardProps) {
                 <div className="lang-stat-value mono">{fmt(repo.commits)}</div>
               </div>
               <div className="lang-stat">
-                <div className="lang-stat-label">Insertions</div>
-                <div className="lang-stat-value mono positive">+{fmt(repo.insertions)}</div>
+                <div className="lang-stat-label">Net</div>
+                <div
+                  className={`lang-stat-value mono ${
+                    repo.insertions - repo.deletions > 0
+                      ? "positive"
+                      : repo.insertions - repo.deletions < 0
+                        ? "negative"
+                        : ""
+                  }`}
+                >
+                  {fmtSigned(repo.insertions - repo.deletions)}
+                </div>
               </div>
             </div>
             <div className="lang-chevron">

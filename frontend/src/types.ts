@@ -25,7 +25,7 @@ export interface RepoSummary {
   deletions: number;
   commits: number;
   files_changed: number;
-  last_date: string;
+  last_date: string | null;
   daily_stats: DailyStat[];
 }
 
@@ -41,10 +41,17 @@ export interface ScanConfig {
 
 export type CloseBehavior = "minimize" | "exit";
 
+export interface GithubConfig {
+  connected: boolean;
+  username: string;
+  token: string;
+}
+
 export interface Config {
   repos: RepoEntry[];
   scan: ScanConfig;
   author_email: string;
+  github: GithubConfig;
   close_behavior: CloseBehavior;
 }
 

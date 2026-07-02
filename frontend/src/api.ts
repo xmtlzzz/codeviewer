@@ -33,3 +33,14 @@ export async function removeRepo(path: string): Promise<Config> {
 export async function setAuthorEmail(email: string): Promise<Config> {
   return invoke<Config>("set_author_email", { email });
 }
+
+export async function setGithubConnection(
+  username: string,
+  token: string,
+): Promise<Config> {
+  return invoke<Config>("set_github_connection", { username, token });
+}
+
+export async function clearGithubConnection(): Promise<Config> {
+  return invoke<Config>("clear_github_connection");
+}

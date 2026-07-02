@@ -32,8 +32,14 @@ pub struct RepoSummary {
     pub deletions: u64,
     pub commits: u32,
     pub files_changed: u32,
-    pub last_date: NaiveDate,
+    pub last_date: Option<NaiveDate>,
     pub daily_stats: Vec<DailyStat>,
+}
+
+impl RepoSummary {
+    pub fn net_lines(&self) -> i64 {
+        self.insertions as i64 - self.deletions as i64
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,6 +53,16 @@ pub struct Summary {
     pub total_commits: u32,
     pub days: Vec<DailyStat>,
     pub repo_stats: Vec<RepoSummary>,
+}
+
+impl Summary {
+    pub fn today_net_lines(&self) -> i64 {
+        self.today_insertions as i64 - self.today_deletions as i64
+    }
+
+    pub fn total_net_lines(&self) -> i64 {
+        self.total_insertions as i64 - self.total_deletions as i64
+    }
 }
 
 #[cfg(test)]
@@ -130,7 +146,7 @@ mod tests {
             deletions: 20,
             commits: 2,
             files_changed: 3,
-            last_date: NaiveDate::from_ymd_opt(2026, 6, 27).unwrap(),
+            last_date: Some(NaiveDate::from_ymd_opt(2026, 6, 27).unwrap()),
             daily_stats: daily,
         };
 
@@ -139,7 +155,44 @@ mod tests {
         assert_eq!(decoded.name, "my-repo");
         assert_eq!(decoded.insertions, 100);
         assert_eq!(decoded.commits, 2);
+        assert_eq!(
+            decoded.last_date,
+            Some(NaiveDate::from_ymd_opt(2026, 6, 27).unwrap())
+        );
         assert_eq!(decoded.daily_stats.len(), 1);
         assert_eq!(decoded.daily_stats[0].repo_name, "my-repo");
+    }
+
+    #[test]
+    fn test_repo_summary_net_lines_correct() {
+        let summary = RepoSummary {
+            name: "my-repo".to_string(),
+            insertions: 100,
+            deletions: 20,
+            commits: 2,
+            files_changed: 3,
+            last_date: None,
+            daily_stats: Vec::new(),
+        };
+
+        assert_eq!(summary.net_lines(), 80);
+    }
+
+    #[test]
+    fn test_summary_net_lines_correct() {
+        let summary = Summary {
+            today_insertions: 25,
+            today_deletions: 10,
+            today_commits: 2,
+            week_insertions: 40,
+            total_insertions: 100,
+            total_deletions: 45,
+            total_commits: 3,
+            days: Vec::new(),
+            repo_stats: Vec::new(),
+        };
+
+        assert_eq!(summary.today_net_lines(), 15);
+        assert_eq!(summary.total_net_lines(), 55);
     }
 }
