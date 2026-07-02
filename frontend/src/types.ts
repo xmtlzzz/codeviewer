@@ -29,6 +29,19 @@ export interface RepoSummary {
   daily_stats: DailyStat[];
 }
 
+export interface GithubRepoSummary extends RepoSummary {
+  source: "github";
+  full_name: string;
+  html_url: string;
+  description: string | null;
+  language: string | null;
+  stars: number;
+  forks: number;
+  private: boolean;
+}
+
+export type DashboardRepo = RepoSummary | GithubRepoSummary;
+
 export interface RepoEntry {
   path: string;
   name?: string;

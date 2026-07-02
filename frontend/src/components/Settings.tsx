@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useI18n, type Locale } from "../i18n";
 import type { Config } from "../types";
 import {
   addRepo,
@@ -20,6 +21,7 @@ interface SettingsProps {
   config: Config;
   themeMode: ThemeMode;
   onSetTheme: (mode: ThemeMode) => void;
+  onSetLocale: (locale: Locale) => void;
   onConfigChange: (config: Config) => void;
 }
 
@@ -31,8 +33,10 @@ export function Settings({
   config,
   themeMode,
   onSetTheme,
+  onSetLocale,
   onConfigChange,
 }: SettingsProps) {
+  const { locale, t } = useI18n();
   const [newRepoPath, setNewRepoPath] = useState("");
   const [emailInput, setEmailInput] = useState(config.author_email);
   const [githubUsername, setGithubUsername] = useState(config.github.username);
@@ -48,8 +52,10 @@ export function Settings({
   const repoCount = config.repos.length;
   const intervalLabel =
     config.scan.interval_secs >= 60
-      ? `${Math.round(config.scan.interval_secs / 60)} min`
-      : `${config.scan.interval_secs} sec`;
+      ? t("settings.intervalMinutes", {
+          count: Math.round(config.scan.interval_secs / 60),
+        })
+      : t("settings.intervalSeconds", { count: config.scan.interval_secs });
 
   const handleAddRepo = async () => {
     const path = newRepoPath.trim();
@@ -123,42 +129,44 @@ export function Settings({
     <section className="page active">
       <div className="settings-section">
         <div className="section-title">
-          <span>General</span>
+          <span>{t("settings.general")}</span>
         </div>
         <div className="settings-card">
           <div className="info-row">
-            <span className="info-label">Application</span>
+            <span className="info-label">{t("settings.application")}</span>
             <span className="info-value">CodeViewer</span>
           </div>
           <div className="info-row">
-            <span className="info-label">Version</span>
+            <span className="info-label">{t("settings.version")}</span>
             <span className="info-value mono">{APP_VERSION}</span>
           </div>
           <div className="info-row">
-            <span className="info-label">Status</span>
+            <span className="info-label">{t("settings.status")}</span>
             <span className="info-value">
               <span className="status-dot on" />
-              Running
+              {t("settings.running")}
             </span>
           </div>
           <div className="info-row">
-            <span className="info-label">Scan interval</span>
+            <span className="info-label">{t("settings.scanInterval")}</span>
             <span className="info-value mono">{intervalLabel}</span>
           </div>
           <div className="info-row">
-            <span className="info-label">Scan window</span>
-            <span className="info-value mono">{config.scan.since_days} days</span>
+            <span className="info-label">{t("settings.scanWindow")}</span>
+            <span className="info-value mono">
+              {t("settings.days", { count: config.scan.since_days })}
+            </span>
           </div>
           <div
             className="info-row"
             style={{ flexDirection: "column", alignItems: "stretch", gap: 8 }}
           >
-            <span className="info-label">Author email</span>
+            <span className="info-label">{t("settings.authorEmail")}</span>
             <div className="email-edit">
               <input
                 className="settings-input"
                 type="text"
-                placeholder="your-email@example.com"
+                placeholder={t("settings.emailPlaceholder")}
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -171,7 +179,7 @@ export function Settings({
                 disabled={saving || emailInput.trim() === config.author_email}
                 onClick={handleSaveEmail}
               >
-                Save
+                {t("settings.save")}
               </button>
             </div>
           </div>
@@ -180,24 +188,26 @@ export function Settings({
 
       <div className="settings-section">
         <div className="section-title">
-          <span>GitHub</span>
+          <span>{t("settings.github")}</span>
         </div>
         <div className="settings-card">
           <div className="github-box">
             <div className="github-box-title">
               <GithubIcon />
-              GitHub account
+              {t("settings.githubAccount")}
             </div>
             <div className="github-box-desc">
               {config.github.connected
-                ? `Connected as @${config.github.username}. This stores local credentials for future GitHub sync support.`
-                : "Save a GitHub username and token to enable account connection in settings."}
+                ? t("settings.githubConnected", {
+                    username: config.github.username,
+                  })
+                : t("settings.githubDisconnected")}
             </div>
             <div className="github-fields">
               <input
                 className="settings-input"
                 type="text"
-                placeholder="GitHub username"
+                placeholder={t("settings.githubUsername")}
                 value={githubUsername}
                 onChange={(e) => setGithubUsername(e.target.value)}
                 disabled={saving}
@@ -205,7 +215,7 @@ export function Settings({
               <input
                 className="settings-input"
                 type="password"
-                placeholder="GitHub personal access token"
+                placeholder={t("settings.githubToken")}
                 value={githubToken}
                 onChange={(e) => setGithubToken(e.target.value)}
                 disabled={saving}
@@ -219,7 +229,9 @@ export function Settings({
                 onClick={handleConnectGithub}
               >
                 <GithubIcon />
-                {config.github.connected ? "Update connection" : "Connect GitHub"}
+                {config.github.connected
+                  ? t("settings.updateConnection")
+                  : t("settings.connectGithub")}
               </button>
               <button
                 className="btn connected"
@@ -227,7 +239,7 @@ export function Settings({
                 disabled={saving || !config.github.connected}
                 onClick={handleDisconnectGithub}
               >
-                Disconnect
+                {t("settings.disconnect")}
               </button>
             </div>
           </div>
@@ -236,21 +248,21 @@ export function Settings({
 
       <div className="settings-section">
         <div className="section-title">
-          <span>Repositories</span>
-          <span className="count">{repoCount} repos</span>
+          <span>{t("settings.repositories")}</span>
+          <span className="count">{t("dashboard.repoCount", { count: repoCount })}</span>
         </div>
         <div className="settings-card">
           {config.repos.map((repo, i) => (
             <div className="repo-row" key={`${repo.path}-${i}`}>
               <span className="repo-dot active" />
-              <span className="repo-name">{repo.name || deriveName(repo.path)}</span>
+              <span className="repo-name">{repo.name || deriveName(repo.path, t)}</span>
               <span className="repo-path" title={repo.path}>
                 {repo.path}
               </span>
               <button
                 className="repo-delete"
                 type="button"
-                title="Remove repository"
+                title={t("settings.removeRepository")}
                 disabled={saving}
                 onClick={() => handleRemoveRepo(repo.path)}
               >
@@ -261,14 +273,14 @@ export function Settings({
           {config.repos.length === 0 && (
             <div className="repo-row">
               <span className="repo-dot inactive" />
-              <span className="repo-name">No repositories added</span>
+              <span className="repo-name">{t("settings.noRepositories")}</span>
             </div>
           )}
           <div className="input-row">
             <input
               className="settings-input"
               type="text"
-              placeholder="Repository path, e.g. D:\\code\\my-project"
+              placeholder={t("settings.repoPathPlaceholder")}
               value={newRepoPath}
               onChange={(e) => setNewRepoPath(e.target.value)}
               onKeyDown={(e) => {
@@ -283,7 +295,7 @@ export function Settings({
               onClick={handleAddRepo}
             >
               <PlusIcon />
-              Add
+              {t("settings.add")}
             </button>
           </div>
         </div>
@@ -291,14 +303,14 @@ export function Settings({
 
       <div className="settings-section">
         <div className="section-title">
-          <span>Appearance</span>
+          <span>{t("settings.appearance")}</span>
         </div>
         <div className="settings-card">
           <div
             className="info-row"
             style={{ flexDirection: "column", alignItems: "stretch", gap: 10 }}
           >
-            <span className="info-label">Theme</span>
+            <span className="info-label">{t("settings.theme")}</span>
             <div className="theme-selector">
               <button
                 className={`theme-option${themeMode === "light" ? " active" : ""}`}
@@ -306,7 +318,7 @@ export function Settings({
                 type="button"
               >
                 <SunIcon />
-                Light
+                {t("settings.light")}
               </button>
               <button
                 className={`theme-option${themeMode === "dark" ? " active" : ""}`}
@@ -314,7 +326,7 @@ export function Settings({
                 type="button"
               >
                 <MoonIcon />
-                Dark
+                {t("settings.dark")}
               </button>
               <button
                 className={`theme-option${themeMode === "auto" ? " active" : ""}`}
@@ -322,7 +334,29 @@ export function Settings({
                 type="button"
               >
                 <MonitorIcon />
-                Auto
+                {t("settings.auto")}
+              </button>
+            </div>
+          </div>
+          <div
+            className="info-row"
+            style={{ flexDirection: "column", alignItems: "stretch", gap: 10 }}
+          >
+            <span className="info-label">{t("settings.language")}</span>
+            <div className="theme-selector">
+              <button
+                className={`theme-option${locale === "zh" ? " active" : ""}`}
+                onClick={() => onSetLocale("zh")}
+                type="button"
+              >
+                {t("settings.simplifiedChinese")}
+              </button>
+              <button
+                className={`theme-option${locale === "en" ? " active" : ""}`}
+                onClick={() => onSetLocale("en")}
+                type="button"
+              >
+                {t("settings.english")}
               </button>
             </div>
           </div>
@@ -332,9 +366,9 @@ export function Settings({
   );
 }
 
-function deriveName(path: string): string {
-  if (!path) return "unknown";
+function deriveName(path: string, t: ReturnType<typeof useI18n>["t"]): string {
+  if (!path) return t("common.unknown");
   const cleaned = path.replace(/[\\/]+$/, "");
   const segs = cleaned.split(/[\\/]/);
-  return segs[segs.length - 1] || "unknown";
+  return segs[segs.length - 1] || t("common.unknown");
 }

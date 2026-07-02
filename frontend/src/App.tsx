@@ -1,14 +1,27 @@
 import { useEffect, useState } from "react";
-import { scanNow, onScanResultUpdated, getConfig } from "./api";
-import type { Summary, Config } from "./types";
+import {
+  scanNow,
+  onScanResultUpdated,
+  getConfig,
+  getGithubPublicRepos,
+} from "./api";
+import type {
+  Summary,
+  Config,
+  DashboardRepo,
+  GithubRepoSummary,
+} from "./types";
 import { Header } from "./components/Header";
 import { Dashboard } from "./components/Dashboard";
+import { RepositoryDetail } from "./components/RepositoryDetail";
 import { Settings } from "./components/Settings";
 import type { ThemeMode } from "./components/Settings";
+import { I18nProvider, type Locale } from "./i18n";
 
-export type Page = "dashboard" | "settings";
+export type Page = "dashboard" | "detail" | "settings";
 
 const THEME_KEY = "codeviewer-theme";
+const LOCALE_KEY = "codeviewer-locale";
 
 function getSystemDark(): boolean {
   return (
@@ -29,12 +42,21 @@ function readMode(): ThemeMode {
   return "light";
 }
 
+function readLocale(): Locale {
+  if (typeof window === "undefined") return "zh";
+  const saved = localStorage.getItem(LOCALE_KEY);
+  return saved === "zh" || saved === "en" ? saved : "zh";
+}
+
 export default function App() {
   const [page, setPage] = useState<Page>("dashboard");
   const [summary, setSummary] = useState<Summary | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
   const [scanErrors, setScanErrors] = useState<string[]>([]);
+  const [githubRepos, setGithubRepos] = useState<GithubRepoSummary[]>([]);
+  const [selectedRepo, setSelectedRepo] = useState<DashboardRepo | null>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readMode);
+  const [locale, setLocale] = useState<Locale>(readLocale);
 
   useEffect(() => {
     const effective = getEffectiveTheme(themeMode);
@@ -52,13 +74,24 @@ export default function App() {
   }, [themeMode]);
 
   useEffect(() => {
+    document.documentElement.lang = locale === "zh" ? "zh-CN" : "en";
+  }, [locale]);
+
+  useEffect(() => {
     scanNow()
       .then((result) => {
         setSummary(result.summary);
         setScanErrors(result.errors);
       })
       .catch(() => undefined);
-    getConfig().then(setConfig).catch(() => undefined);
+
+    getConfig()
+      .then((loadedConfig) => {
+        setConfig(loadedConfig);
+        return refreshGithubRepos(loadedConfig);
+      })
+      .catch(() => undefined);
+
     const unlistenPromise = onScanResultUpdated((result) => {
       setSummary(result.summary);
       setScanErrors(result.errors);
@@ -80,8 +113,32 @@ export default function App() {
     setThemeMode(mode);
   };
 
+  const handleSetLocale = (nextLocale: Locale) => {
+    localStorage.setItem(LOCALE_KEY, nextLocale);
+    setLocale(nextLocale);
+  };
+
+  const refreshGithubRepos = async (nextConfig: Config) => {
+    if (!nextConfig.github.connected || !nextConfig.github.username.trim()) {
+      setGithubRepos([]);
+      return;
+    }
+
+    try {
+      const repos = await getGithubPublicRepos(
+        nextConfig.github.username,
+        nextConfig.github.token,
+      );
+      setGithubRepos(repos);
+    } catch (error) {
+      console.error("getGithubPublicRepos failed:", error);
+      setGithubRepos([]);
+    }
+  };
+
   const handleConfigChange = (updated: Config) => {
     setConfig(updated);
+    refreshGithubRepos(updated).catch(() => undefined);
     scanNow()
       .then((result) => {
         setSummary(result.summary);
@@ -90,38 +147,75 @@ export default function App() {
       .catch(() => undefined);
   };
 
+  const handleSelectRepo = (repo: DashboardRepo) => {
+    setSelectedRepo(repo);
+    setPage("detail");
+  };
+
+  const handleBack = () => {
+    if (page === "detail") {
+      setSelectedRepo(null);
+    }
+    setPage("dashboard");
+  };
+
   const isDark = getEffectiveTheme(themeMode) === "dark";
+  const title =
+    page === "settings"
+      ? locale === "zh"
+        ? "设置"
+        : "Settings"
+      : page === "detail" && selectedRepo
+        ? selectedRepo.name
+        : "CodeViewer";
 
   return (
-    <div className="app">
-      <Header
-        page={page}
-        title={page === "settings" ? "Settings" : "CodeViewer"}
-        isDark={isDark}
-        onBack={() => setPage("dashboard")}
-        onSettings={() => setPage("settings")}
-        onToggleTheme={toggleTheme}
-      />
-      {page === "dashboard" &&
-        (summary ? (
-          <Dashboard summary={summary} scanErrors={scanErrors} />
-        ) : (
-          <section className="page active">
-            <div className="total-section">
-              <div className="total-label">Net changed lines</div>
-              <div className="total-number mono">...</div>
-              <div className="total-meta">Loading...</div>
-            </div>
-          </section>
-        ))}
-      {page === "settings" && config && (
-        <Settings
-          config={config}
-          themeMode={themeMode}
-          onSetTheme={handleSetTheme}
-          onConfigChange={handleConfigChange}
+    <I18nProvider locale={locale} setLocale={handleSetLocale}>
+      <div className="app">
+        <Header
+          page={page}
+          title={title}
+          isDark={isDark}
+          locale={locale}
+          onBack={handleBack}
+          onSettings={() => setPage("settings")}
+          onToggleTheme={toggleTheme}
+          onToggleLanguage={() => handleSetLocale(locale === "zh" ? "en" : "zh")}
         />
-      )}
-    </div>
+        {page === "dashboard" &&
+          (summary ? (
+            <Dashboard
+              summary={summary}
+              scanErrors={scanErrors}
+              githubRepos={githubRepos}
+              onSelectRepo={handleSelectRepo}
+            />
+          ) : (
+            <section className="page active">
+              <div className="total-section">
+                <div className="total-label">
+                  {locale === "zh" ? "净变更行数" : "Net changed lines"}
+                </div>
+                <div className="total-number mono">...</div>
+                <div className="total-meta">
+                  {locale === "zh" ? "加载中..." : "Loading..."}
+                </div>
+              </div>
+            </section>
+          ))}
+        {page === "detail" && selectedRepo && (
+          <RepositoryDetail repo={selectedRepo} />
+        )}
+        {page === "settings" && config && (
+          <Settings
+            config={config}
+            themeMode={themeMode}
+            onSetTheme={handleSetTheme}
+            onSetLocale={handleSetLocale}
+            onConfigChange={handleConfigChange}
+          />
+        )}
+      </div>
+    </I18nProvider>
   );
 }
