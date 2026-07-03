@@ -1,4 +1,9 @@
 import { useMemo, useState } from "react";
+import {
+  filterSummaryByRange,
+  todayKey,
+  type DashboardRange,
+} from "../dashboardStats";
 import { useI18n } from "../i18n";
 import type { DashboardRepo, Summary } from "../types";
 import { TrendChart, type TrendChartVariant } from "./TrendChart";
@@ -42,18 +47,29 @@ export function Dashboard({
   const { t } = useI18n();
   const [reposExpanded, setReposExpanded] = useState(false);
   const [chartVariant, setChartVariant] = useState<TrendChartVariant>("line");
+  const [dashboardRange, setDashboardRange] = useState<DashboardRange>("7d");
+  const rangeLabels: Record<DashboardRange, string> = {
+    today: t("dashboard.range.today"),
+    "7d": t("dashboard.range.7d"),
+    "30d": t("dashboard.range.30d"),
+  };
   const chartLabels: Record<TrendChartVariant, string> = {
     line: t("dashboard.chart.line"),
     bar: t("dashboard.chart.bar"),
     pie: t("dashboard.chart.pie"),
   };
+  const today = useMemo(() => todayKey(), []);
+  const filteredSummary = useMemo(
+    () => filterSummaryByRange(summary, dashboardRange, today),
+    [summary, dashboardRange, today],
+  );
   const repos: DashboardRepo[] = useMemo(
-    () => [...summary.repo_stats, ...githubRepos],
-    [summary.repo_stats, githubRepos],
+    () => [...filteredSummary.repo_stats, ...githubRepos],
+    [filteredSummary.repo_stats, githubRepos],
   );
   const visibleRepos = reposExpanded ? repos : repos.slice(0, 4);
   const hiddenRepoCount = Math.max(0, repos.length - 4);
-  const totalNet = summary.total_insertions - summary.total_deletions;
+  const totalNet = filteredSummary.total_insertions - filteredSummary.total_deletions;
 
   return (
     <section className="page active">
@@ -62,13 +78,30 @@ export function Dashboard({
         <div className="total-number mono">{fmtSigned(totalNet)}</div>
         <div className="total-meta">
           <span>
-            {fmt(summary.total_commits)} {t("dashboard.commits")}
+            {fmt(filteredSummary.total_commits)} {t("dashboard.commits")}
           </span>
           <span className="dot" />
           <span>
-            {t("dashboard.insertions")} +{fmt(summary.total_insertions)} /{" "}
-            {t("dashboard.deletions")} -{fmt(summary.total_deletions)}
+            {t("dashboard.insertions")} +{fmt(filteredSummary.total_insertions)} /{" "}
+            {t("dashboard.deletions")} -{fmt(filteredSummary.total_deletions)}
           </span>
+        </div>
+      </div>
+
+      <div className="dashboard-range-row">
+        <div className="range-selector" role="tablist" aria-label={t("dashboard.rangeLabel")}>
+          {(["today", "7d", "30d"] as DashboardRange[]).map((range) => (
+            <button
+              key={range}
+              className={`range-option${dashboardRange === range ? " active" : ""}`}
+              type="button"
+              role="tab"
+              aria-selected={dashboardRange === range}
+              onClick={() => setDashboardRange(range)}
+            >
+              {rangeLabels[range]}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -162,7 +195,9 @@ export function Dashboard({
 
       <div className="chart-card">
         <div className="chart-header">
-          <span className="chart-title">{t("dashboard.last7Days")}</span>
+          <span className="chart-title">
+            {t("dashboard.rangeChartTitle", { range: rangeLabels[dashboardRange] })}
+          </span>
           <div className="chart-controls">
             <div className="chart-type-selector" role="tablist" aria-label={t("dashboard.chartType")}>
               {(["line", "bar", "pie"] as TrendChartVariant[]).map((variant) => (
@@ -191,7 +226,7 @@ export function Dashboard({
           </div>
         </div>
         <TrendChart
-          days={summary.days}
+          days={filteredSummary.days}
           variant={chartVariant}
           labels={{
             insertions: t("dashboard.insertions"),
