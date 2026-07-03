@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   scanNow,
   onScanResultUpdated,
@@ -57,6 +57,23 @@ export default function App() {
   const [selectedRepo, setSelectedRepo] = useState<DashboardRepo | null>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(readMode);
   const [locale, setLocale] = useState<Locale>(readLocale);
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshingRef = useRef(false);
+
+  const refreshStats = useCallback(async () => {
+    if (refreshingRef.current) return;
+    refreshingRef.current = true;
+    setRefreshing(true);
+
+    try {
+      const result = await scanNow();
+      setSummary(result.summary);
+      setScanErrors(result.errors);
+    } finally {
+      refreshingRef.current = false;
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     const effective = getEffectiveTheme(themeMode);
@@ -78,12 +95,7 @@ export default function App() {
   }, [locale]);
 
   useEffect(() => {
-    scanNow()
-      .then((result) => {
-        setSummary(result.summary);
-        setScanErrors(result.errors);
-      })
-      .catch(() => undefined);
+    refreshStats().catch(() => undefined);
 
     getConfig()
       .then((loadedConfig) => {
@@ -99,7 +111,7 @@ export default function App() {
     return () => {
       unlistenPromise.then((fn) => fn());
     };
-  }, []);
+  }, [refreshStats]);
 
   const toggleTheme = () => {
     const current = document.documentElement.dataset.theme || "light";
@@ -139,12 +151,7 @@ export default function App() {
   const handleConfigChange = (updated: Config) => {
     setConfig(updated);
     refreshGithubRepos(updated).catch(() => undefined);
-    scanNow()
-      .then((result) => {
-        setSummary(result.summary);
-        setScanErrors(result.errors);
-      })
-      .catch(() => undefined);
+    refreshStats().catch(() => undefined);
   };
 
   const handleSelectRepo = (repo: DashboardRepo) => {
@@ -181,6 +188,8 @@ export default function App() {
           onSettings={() => setPage("settings")}
           onToggleTheme={toggleTheme}
           onToggleLanguage={() => handleSetLocale(locale === "zh" ? "en" : "zh")}
+          onRefresh={() => refreshStats().catch(() => undefined)}
+          isRefreshing={refreshing}
         />
         {page === "dashboard" &&
           (summary ? (

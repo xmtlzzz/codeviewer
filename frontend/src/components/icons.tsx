@@ -70,6 +70,17 @@ export function FileCodeIcon(): JSX.Element {
   );
 }
 
+export function RefreshIcon(): JSX.Element {
+  return (
+    <svg {...base}>
+      <polyline points="23 4 23 10 17 10" />
+      <polyline points="1 20 1 14 7 14" />
+      <path d="M3.5 9a9 9 0 0 1 14.8-3.4L23 10" />
+      <path d="M20.5 15a9 9 0 0 1-14.8 3.4L1 14" />
+    </svg>
+  );
+}
+
 export function GitBranchIcon(): JSX.Element {
   return (
     <svg {...base}>

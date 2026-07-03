@@ -177,6 +177,20 @@ body {
   stroke-width: 1.5;
 }
 
+.icon-btn:disabled {
+  cursor: default;
+  opacity: 0.72;
+}
+
+.refresh-btn.loading svg {
+  animation: refreshSpin 700ms linear infinite;
+}
+
+@keyframes refreshSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 /* ============================================================
    Back Button
    ============================================================ */
@@ -261,7 +275,8 @@ body {
   }
   .lang-card,
   .chart-bar,
-  .chart-svg-pie path {
+  .chart-svg-pie path,
+  .refresh-btn.loading svg {
     animation: none;
   }
   * { transition: none !important; }

@@ -1,6 +1,6 @@
 import type { Page } from "../App";
 import { useI18n, type Locale } from "../i18n";
-import { ArrowLeftIcon, MoonIcon, SunIcon, SettingsIcon } from "./icons";
+import { ArrowLeftIcon, MoonIcon, RefreshIcon, SunIcon, SettingsIcon } from "./icons";
 
 interface HeaderProps {
   page: Page;
@@ -11,6 +11,8 @@ interface HeaderProps {
   onSettings: () => void;
   onToggleTheme: () => void;
   onToggleLanguage: () => void;
+  onRefresh: () => void;
+  isRefreshing: boolean;
 }
 
 export function Header({
@@ -22,6 +24,8 @@ export function Header({
   onSettings,
   onToggleTheme,
   onToggleLanguage,
+  onRefresh,
+  isRefreshing,
 }: HeaderProps) {
   const { t } = useI18n();
 
@@ -50,6 +54,18 @@ export function Header({
         >
           {locale === "zh" ? "EN" : "中"}
         </button>
+        {page === "dashboard" && (
+          <button
+            className={`icon-btn refresh-btn${isRefreshing ? " loading" : ""}`}
+            onClick={onRefresh}
+            aria-label={isRefreshing ? t("header.refreshing") : t("header.refresh")}
+            aria-busy={isRefreshing}
+            disabled={isRefreshing}
+            type="button"
+          >
+            <RefreshIcon />
+          </button>
+        )}
         <button
           className="icon-btn"
           onClick={onToggleTheme}
