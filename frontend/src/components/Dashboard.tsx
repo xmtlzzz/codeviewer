@@ -1,6 +1,7 @@
+import { useMemo, useState } from "react";
 import { useI18n } from "../i18n";
 import type { DashboardRepo, Summary } from "../types";
-import { TrendChart } from "./TrendChart";
+import { TrendChart, type TrendChartVariant } from "./TrendChart";
 import { FileCodeIcon, ChevronRightIcon } from "./icons";
 
 interface DashboardProps {
@@ -39,7 +40,19 @@ export function Dashboard({
   onSelectRepo,
 }: DashboardProps) {
   const { t } = useI18n();
-  const repos: DashboardRepo[] = [...summary.repo_stats, ...githubRepos];
+  const [reposExpanded, setReposExpanded] = useState(false);
+  const [chartVariant, setChartVariant] = useState<TrendChartVariant>("line");
+  const chartLabels: Record<TrendChartVariant, string> = {
+    line: t("dashboard.chart.line"),
+    bar: t("dashboard.chart.bar"),
+    pie: t("dashboard.chart.pie"),
+  };
+  const repos: DashboardRepo[] = useMemo(
+    () => [...summary.repo_stats, ...githubRepos],
+    [summary.repo_stats, githubRepos],
+  );
+  const visibleRepos = reposExpanded ? repos : repos.slice(0, 4);
+  const hiddenRepoCount = Math.max(0, repos.length - 4);
   const totalNet = summary.total_insertions - summary.total_deletions;
 
   return (
@@ -85,13 +98,14 @@ export function Dashboard({
             </div>
           </div>
         )}
-        {repos.map((repo) => (
+        {visibleRepos.map((repo, i) => (
           <button
             className="lang-card"
             key={`${"source" in repo ? repo.full_name : repo.name}-${repo.last_date ?? "none"}`}
             role="listitem"
             type="button"
             onClick={() => onSelectRepo(repo)}
+            style={{ animationDelay: `${Math.min(i, 8) * 28}ms` }}
           >
             <div className="lang-icon">
               <FileCodeIcon />
@@ -127,23 +141,64 @@ export function Dashboard({
             </div>
           </button>
         ))}
+        {hiddenRepoCount > 0 && (
+          <button
+            className="repo-list-toggle"
+            type="button"
+            aria-expanded={reposExpanded}
+            onClick={() => setReposExpanded((value) => !value)}
+          >
+            <span>
+              {reposExpanded
+                ? t("dashboard.collapseRepos")
+                : t("dashboard.expandRepos", { count: hiddenRepoCount })}
+            </span>
+            <span className={`toggle-chevron${reposExpanded ? " expanded" : ""}`}>
+              <ChevronRightIcon />
+            </span>
+          </button>
+        )}
       </div>
 
       <div className="chart-card">
         <div className="chart-header">
           <span className="chart-title">{t("dashboard.last7Days")}</span>
-          <div className="chart-legend">
-            <div className="legend-item">
-              <span className="legend-dot green" />
-              <span>{t("dashboard.insertions")}</span>
+          <div className="chart-controls">
+            <div className="chart-type-selector" role="tablist" aria-label={t("dashboard.chartType")}>
+              {(["line", "bar", "pie"] as TrendChartVariant[]).map((variant) => (
+                <button
+                  key={variant}
+                  className={`chart-type-option${chartVariant === variant ? " active" : ""}`}
+                  type="button"
+                  role="tab"
+                  aria-selected={chartVariant === variant}
+                  onClick={() => setChartVariant(variant)}
+                >
+                  {chartLabels[variant]}
+                </button>
+              ))}
             </div>
-            <div className="legend-item">
-              <span className="legend-dot red" />
-              <span>{t("dashboard.deletions")}</span>
+            <div className="chart-legend">
+              <div className="legend-item">
+                <span className="legend-dot green" />
+                <span>{t("dashboard.insertions")}</span>
+              </div>
+              <div className="legend-item">
+                <span className="legend-dot red" />
+                <span>{t("dashboard.deletions")}</span>
+              </div>
             </div>
           </div>
         </div>
-        <TrendChart days={summary.days} />
+        <TrendChart
+          days={summary.days}
+          variant={chartVariant}
+          labels={{
+            insertions: t("dashboard.insertions"),
+            deletions: t("dashboard.deletions"),
+            lines: t("dashboard.lines"),
+          }}
+        />
       </div>
     </section>
   );
