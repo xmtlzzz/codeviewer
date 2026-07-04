@@ -5,6 +5,7 @@ import {
   addRepo,
   removeRepo,
   setAuthorEmail,
+  setLaunchOnStartup,
   setGithubConnection,
   clearGithubConnection,
 } from "../api";
@@ -96,6 +97,18 @@ export function Settings({
     }
   };
 
+  const handleToggleLaunchOnStartup = async () => {
+    setSaving(true);
+    try {
+      const updated = await setLaunchOnStartup(!config.launch_on_startup);
+      onConfigChange(updated);
+    } catch (e) {
+      console.error("set_launch_on_startup failed:", e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleConnectGithub = async () => {
     setSaving(true);
     try {
@@ -146,6 +159,18 @@ export function Settings({
               <span className="status-dot on" />
               {t("settings.running")}
             </span>
+          </div>
+          <div className="info-row">
+            <span className="info-label">{t("settings.launchOnStartup")}</span>
+            <button
+              className={`toggle${config.launch_on_startup ? " on" : ""}`}
+              type="button"
+              role="switch"
+              aria-checked={config.launch_on_startup}
+              aria-label={t("settings.launchOnStartup")}
+              disabled={saving}
+              onClick={handleToggleLaunchOnStartup}
+            />
           </div>
           <div className="info-row">
             <span className="info-label">{t("settings.scanInterval")}</span>

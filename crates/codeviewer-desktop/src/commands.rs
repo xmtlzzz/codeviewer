@@ -1,7 +1,8 @@
 use codeviewer_core::{aggregator, config, models, scanner};
 use std::path::PathBuf;
 use std::sync::Mutex;
-use tauri::State;
+use tauri::{AppHandle, State};
+use tauri_plugin_autostart::ManagerExt;
 
 pub struct AppState {
     pub config: Mutex<config::Config>,
@@ -38,11 +39,22 @@ pub fn scan_config(config: &config::Config) -> ScanResult {
 
     for entry in &config.repos {
         match scanner::scan_repo(std::path::Path::new(&entry.path), &opts) {
-            Ok(stats) => repos.push(models::RepoStat {
-                repo_path: entry.path.clone(),
-                repo_name: repo_name_for(entry),
-                daily_stats: stats,
-            }),
+            Ok(stats) => {
+                let working_tree_changes =
+                    match scanner::scan_working_tree_changes(std::path::Path::new(&entry.path)) {
+                        Ok(changes) => changes,
+                        Err(e) => {
+                            errors.push(format!("{}: {}", entry.path, e));
+                            Vec::new()
+                        }
+                    };
+                repos.push(models::RepoStat {
+                    repo_path: entry.path.clone(),
+                    repo_name: repo_name_for(entry),
+                    daily_stats: stats,
+                    working_tree_changes,
+                });
+            }
             Err(e) => errors.push(format!("{}: {}", entry.path, e)),
         }
     }
@@ -88,10 +100,7 @@ pub fn add_repo(
 
 /// Remove a repo by path, persist config, return updated config.
 #[tauri::command]
-pub fn remove_repo(
-    state: State<'_, AppState>,
-    path: String,
-) -> Result<config::Config, String> {
+pub fn remove_repo(state: State<'_, AppState>, path: String) -> Result<config::Config, String> {
     let mut guard = state.config.lock().unwrap();
     guard.remove_repo(&path);
     guard.save(&state.config_path).map_err(|e| e.to_string())?;
@@ -106,6 +115,25 @@ pub fn set_author_email(
 ) -> Result<config::Config, String> {
     let mut guard = state.config.lock().unwrap();
     guard.set_author_email(email);
+    guard.save(&state.config_path).map_err(|e| e.to_string())?;
+    Ok(guard.clone())
+}
+
+#[tauri::command]
+pub fn set_launch_on_startup(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    enabled: bool,
+) -> Result<config::Config, String> {
+    let autostart = app.autolaunch();
+    if enabled {
+        autostart.enable().map_err(|e| e.to_string())?;
+    } else {
+        autostart.disable().map_err(|e| e.to_string())?;
+    }
+
+    let mut guard = state.config.lock().unwrap();
+    guard.set_launch_on_startup(enabled);
     guard.save(&state.config_path).map_err(|e| e.to_string())?;
     Ok(guard.clone())
 }

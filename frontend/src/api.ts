@@ -34,6 +34,10 @@ export async function setAuthorEmail(email: string): Promise<Config> {
   return invoke<Config>("set_author_email", { email });
 }
 
+export async function setLaunchOnStartup(enabled: boolean): Promise<Config> {
+  return invoke<Config>("set_launch_on_startup", { enabled });
+}
+
 export async function setGithubConnection(
   username: string,
   token: string,
@@ -95,5 +99,6 @@ export async function getGithubPublicRepos(
       files_changed: 0,
       last_date: repo.updated_at ? repo.updated_at.slice(0, 10) : null,
       daily_stats: [],
+      working_tree_changes: [],
     }));
 }

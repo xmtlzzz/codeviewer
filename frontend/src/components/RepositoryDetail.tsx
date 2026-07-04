@@ -16,10 +16,15 @@ function fmtSigned(n: number): string {
   return "0";
 }
 
+function statusClass(status: string): string {
+  return status.toLowerCase().replace(/[^a-z0-9_-]/g, "-");
+}
+
 export function RepositoryDetail({ repo }: RepositoryDetailProps) {
   const { t } = useI18n();
   const net = repo.insertions - repo.deletions;
   const isGithubRepo = "source" in repo;
+  const workingTreeChanges = isGithubRepo ? [] : repo.working_tree_changes;
 
   return (
     <section className="page active">
@@ -110,6 +115,40 @@ export function RepositoryDetail({ repo }: RepositoryDetailProps) {
                 <div className="table-cell mono">{fmt(day.commits)}</div>
               </div>
             ))}
+          </div>
+
+          <div className="chart-header file-change-header">
+            <span className="chart-title">{t("detail.workingTreeChanges")}</span>
+          </div>
+          <div className="data-table file-change-table">
+            <div className="table-row header">
+              <div className="table-cell">{t("detail.file")}</div>
+              <div className="table-cell">{t("detail.status")}</div>
+              <div className="table-cell">{t("detail.changedLines")}</div>
+            </div>
+            {workingTreeChanges.length === 0 ? (
+              <div className="table-row empty">
+                <div className="table-cell">{t("detail.noWorkingTreeChanges")}</div>
+              </div>
+            ) : (
+              workingTreeChanges.map((change) => (
+                <div className="table-row" key={`${repo.name}-${change.path}`}>
+                  <div className="table-cell file-path" title={change.path}>
+                    {change.path}
+                  </div>
+                  <div className="table-cell">
+                    <span className={`status-pill ${statusClass(change.status)}`}>
+                      {change.status}
+                    </span>
+                  </div>
+                  <div className="table-cell num">
+                    <span className="pos">+{fmt(change.insertions)}</span>
+                    {" / "}
+                    <span className="neg">-{fmt(change.deletions)}</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </>
       )}

@@ -68,6 +68,7 @@ pub fn aggregate(repos: Vec<RepoStat>) -> Summary {
             files_changed: repo_files_changed,
             last_date: repo_last_date,
             daily_stats: repo.daily_stats,
+            working_tree_changes: repo.working_tree_changes,
         });
     }
 
@@ -112,6 +113,7 @@ mod tests {
             repo_path: format!("/tmp/{name}"),
             repo_name: name.to_string(),
             daily_stats: stats,
+            working_tree_changes: Vec::new(),
         }
     }
 
@@ -260,7 +262,10 @@ mod tests {
     fn test_repo_stats_include_repos_without_activity() {
         let today = today_str();
         let summary = aggregate(vec![
-            make_repo("active-repo", vec![make_stat(&today, "active-repo", 10, 2, 1)]),
+            make_repo(
+                "active-repo",
+                vec![make_stat(&today, "active-repo", 10, 2, 1)],
+            ),
             make_repo("idle-repo", vec![]),
         ]);
 
@@ -277,5 +282,25 @@ mod tests {
         assert_eq!(idle_repo.files_changed, 0);
         assert_eq!(idle_repo.last_date, None);
         assert!(idle_repo.daily_stats.is_empty());
+    }
+
+    #[test]
+    fn test_repo_stats_preserve_working_tree_changes() {
+        let mut repo = make_repo("repo-a", vec![]);
+        repo.working_tree_changes = vec![crate::models::FileChange {
+            path: "src/main.rs".to_string(),
+            status: "modified".to_string(),
+            insertions: 3,
+            deletions: 1,
+        }];
+
+        let summary = aggregate(vec![repo]);
+
+        assert_eq!(summary.repo_stats.len(), 1);
+        assert_eq!(summary.repo_stats[0].working_tree_changes.len(), 1);
+        assert_eq!(
+            summary.repo_stats[0].working_tree_changes[0].path,
+            "src/main.rs"
+        );
     }
 }

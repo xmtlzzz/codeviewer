@@ -38,6 +38,7 @@ mod tests {
                 commits: 2,
                 repo_name: "myproject".to_string(),
             }],
+            working_tree_changes: Vec::new(),
         }
     }
 

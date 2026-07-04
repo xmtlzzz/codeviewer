@@ -37,11 +37,22 @@ fn scan_all(config: &config::Config) -> (Vec<models::RepoStat>, Vec<String>) {
 
     for entry in &config.repos {
         match scanner::scan_repo(std::path::Path::new(&entry.path), &opts) {
-            Ok(stats) => repos.push(models::RepoStat {
-                repo_path: entry.path.clone(),
-                repo_name: repo_name_for(entry),
-                daily_stats: stats,
-            }),
+            Ok(stats) => {
+                let working_tree_changes =
+                    match scanner::scan_working_tree_changes(std::path::Path::new(&entry.path)) {
+                        Ok(changes) => changes,
+                        Err(e) => {
+                            errors.push(format!("{}: {}", entry.path, e));
+                            Vec::new()
+                        }
+                    };
+                repos.push(models::RepoStat {
+                    repo_path: entry.path.clone(),
+                    repo_name: repo_name_for(entry),
+                    daily_stats: stats,
+                    working_tree_changes,
+                });
+            }
             Err(e) => errors.push(format!("{}: {}", entry.path, e)),
         }
     }
@@ -68,10 +79,7 @@ fn main() {
             } else {
                 println!(
                     "今日: +{}/-{} (净 {} 行, {} commits)",
-                    summary.today_insertions,
-                    summary.today_deletions,
-                    net,
-                    summary.today_commits
+                    summary.today_insertions, summary.today_deletions, net, summary.today_commits
                 );
             }
         }

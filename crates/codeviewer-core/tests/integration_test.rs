@@ -90,11 +90,13 @@ fn test_full_pipeline_scan_aggregate_save_load() {
             repo_path: dir1.path().to_string_lossy().into_owned(),
             repo_name: "repo1".to_string(),
             daily_stats: stats1.clone(),
+            working_tree_changes: Vec::new(),
         },
         models::RepoStat {
             repo_path: dir2.path().to_string_lossy().into_owned(),
             repo_name: "repo2".to_string(),
             daily_stats: stats2.clone(),
+            working_tree_changes: Vec::new(),
         },
     ]);
     assert_eq!(summary.total_insertions, 3, "2 + 1 = 3 total insertions");
@@ -112,11 +114,13 @@ fn test_full_pipeline_scan_aggregate_save_load() {
             repo_path: dir1.path().to_string_lossy().into_owned(),
             repo_name: "repo1".to_string(),
             daily_stats: stats1,
+            working_tree_changes: Vec::new(),
         },
         models::RepoStat {
             repo_path: dir2.path().to_string_lossy().into_owned(),
             repo_name: "repo2".to_string(),
             daily_stats: stats2,
+            working_tree_changes: Vec::new(),
         },
     ];
     let store_dir = TempDir::new().unwrap();
@@ -151,6 +155,7 @@ fn test_multi_commit_aggregation() {
         repo_path: dir.path().to_string_lossy().into_owned(),
         repo_name: "repo".to_string(),
         daily_stats: stats,
+        working_tree_changes: Vec::new(),
     }]);
     assert_eq!(summary.total_insertions, 4);
     assert_eq!(summary.total_commits, 2);
@@ -208,6 +213,7 @@ fn test_config_save_and_load_roundtrip() {
         author_email: "user@example.com".to_string(),
         github: config::GithubConfig::default(),
         close_behavior: config::CloseBehavior::Minimize,
+        launch_on_startup: false,
     };
 
     original.save(&config_path).unwrap();
@@ -239,6 +245,7 @@ fn test_scan_nonexistent_repo_skipped_in_aggregate() {
         repo_path: dir1.path().to_string_lossy().into_owned(),
         repo_name: "repo1".to_string(),
         daily_stats: stats1,
+        working_tree_changes: Vec::new(),
     }]);
     assert_eq!(summary.total_insertions, 1);
     assert_eq!(summary.total_commits, 1);

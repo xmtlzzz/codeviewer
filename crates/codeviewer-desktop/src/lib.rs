@@ -7,6 +7,7 @@ mod tray;
 use commands::AppState;
 use codeviewer_core::config::CloseBehavior;
 use tauri::Manager;
+use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
 pub fn run() {
     let config_path = dirs::config_dir()
@@ -21,6 +22,10 @@ pub fn run() {
             config: Mutex::new(config),
             config_path,
         })
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            None,
+        ))
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                 let state = window.state::<AppState>();
@@ -36,6 +41,13 @@ pub fn run() {
             {
                 tray::create_tray(app.handle())?;
             }
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+            if app.state::<AppState>().config.lock().unwrap().launch_on_startup {
+                let _ = app.autolaunch().enable();
+            }
             scanner_task::spawn_scanner_task(app.handle().clone());
             Ok(())
         })
@@ -46,6 +58,7 @@ pub fn run() {
             commands::add_repo,
             commands::remove_repo,
             commands::set_author_email,
+            commands::set_launch_on_startup,
             commands::set_github_connection,
             commands::clear_github_connection,
         ])

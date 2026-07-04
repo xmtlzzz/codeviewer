@@ -2,6 +2,14 @@ use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FileChange {
+    pub path: String,
+    pub status: String,
+    pub insertions: u64,
+    pub deletions: u64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DailyStat {
     pub date: NaiveDate,
     pub insertions: u64,
@@ -22,6 +30,8 @@ pub struct RepoStat {
     pub repo_path: String,
     pub repo_name: String,
     pub daily_stats: Vec<DailyStat>,
+    #[serde(default)]
+    pub working_tree_changes: Vec<FileChange>,
 }
 
 /// Per-repo summary for the dashboard repo list and detail page.
@@ -34,6 +44,8 @@ pub struct RepoSummary {
     pub files_changed: u32,
     pub last_date: Option<NaiveDate>,
     pub daily_stats: Vec<DailyStat>,
+    #[serde(default)]
+    pub working_tree_changes: Vec<FileChange>,
 }
 
 impl RepoSummary {
@@ -148,6 +160,7 @@ mod tests {
             files_changed: 3,
             last_date: Some(NaiveDate::from_ymd_opt(2026, 6, 27).unwrap()),
             daily_stats: daily,
+            working_tree_changes: Vec::new(),
         };
 
         let json = serde_json::to_string(&summary).unwrap();
@@ -173,6 +186,7 @@ mod tests {
             files_changed: 3,
             last_date: None,
             daily_stats: Vec::new(),
+            working_tree_changes: Vec::new(),
         };
 
         assert_eq!(summary.net_lines(), 80);

@@ -7,6 +7,13 @@ export interface DailyStat {
   repo_name: string;
 }
 
+export interface FileChange {
+  path: string;
+  status: string;
+  insertions: number;
+  deletions: number;
+}
+
 export interface Summary {
   today_insertions: number;
   today_deletions: number;
@@ -27,6 +34,7 @@ export interface RepoSummary {
   files_changed: number;
   last_date: string | null;
   daily_stats: DailyStat[];
+  working_tree_changes: FileChange[];
 }
 
 export interface GithubRepoSummary extends RepoSummary {
@@ -66,6 +74,7 @@ export interface Config {
   author_email: string;
   github: GithubConfig;
   close_behavior: CloseBehavior;
+  launch_on_startup: boolean;
 }
 
 export interface ScanResult {

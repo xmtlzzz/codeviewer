@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    Design Tokens
    ============================================================ */
 :root[data-theme="light"] {
@@ -816,6 +816,59 @@ body {
 
 .table-cell.date {
   color: var(--text-secondary);
+}
+
+.table-row.empty {
+  grid-template-columns: 1fr;
+  color: var(--text-tertiary);
+}
+
+.file-change-header {
+  margin-top: 18px;
+}
+
+.file-change-table .table-row {
+  grid-template-columns: minmax(0, 1.6fr) minmax(90px, 0.7fr) minmax(110px, 0.7fr);
+}
+
+.file-change-table .table-row.empty {
+  grid-template-columns: 1fr;
+}
+
+.file-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg-inset);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.status-pill.modified,
+.status-pill.renamed {
+  color: var(--accent);
+}
+
+.status-pill.added,
+.status-pill.untracked {
+  color: var(--positive);
+}
+
+.status-pill.deleted,
+.status-pill.conflicted {
+  color: var(--negative);
 }
 
 .table-summary {

@@ -27,6 +27,8 @@ pub struct Config {
     pub github: GithubConfig,
     #[serde(default)]
     pub close_behavior: CloseBehavior,
+    #[serde(default)]
+    pub launch_on_startup: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -44,8 +46,12 @@ pub struct ScanConfig {
     pub since_days: u32,
 }
 
-fn default_interval() -> u64 { 30 }
-fn default_since_days() -> u32 { 30 }
+fn default_interval() -> u64 {
+    30
+}
+fn default_since_days() -> u32 {
+    30
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct GithubConfig {
@@ -69,7 +75,10 @@ impl Default for GithubConfig {
 
 impl Default for ScanConfig {
     fn default() -> Self {
-        ScanConfig { interval_secs: 30, since_days: 30 }
+        ScanConfig {
+            interval_secs: 30,
+            since_days: 30,
+        }
     }
 }
 
@@ -81,6 +90,7 @@ impl Default for Config {
             author_email: String::new(),
             github: GithubConfig::default(),
             close_behavior: CloseBehavior::Minimize,
+            launch_on_startup: false,
         }
     }
 }
@@ -103,8 +113,7 @@ impl Config {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        let toml_str = toml::to_string_pretty(self)
-            .map_err(|e| ScanError::Toml(e.to_string()))?;
+        let toml_str = toml::to_string_pretty(self).map_err(|e| ScanError::Toml(e.to_string()))?;
         std::fs::write(path, toml_str)?;
         Ok(())
     }
@@ -126,7 +135,7 @@ impl Config {
 
     /// Set the author email filter.
     pub fn set_author_email(&mut self, email: String) {
-        self.author_email = email;
+        self.author_email = email.trim().to_ascii_lowercase();
     }
 
     pub fn set_github_connection(&mut self, username: String, token: String) {
@@ -142,6 +151,10 @@ impl Config {
     /// Set the close behavior (minimize to tray or exit).
     pub fn set_close_behavior(&mut self, behavior: CloseBehavior) {
         self.close_behavior = behavior;
+    }
+
+    pub fn set_launch_on_startup(&mut self, enabled: bool) {
+        self.launch_on_startup = enabled;
     }
 }
 
@@ -189,6 +202,7 @@ since_days = 30
         assert_eq!(config.author_email, "");
         assert_eq!(config.github, GithubConfig::default());
         assert_eq!(config.close_behavior, CloseBehavior::Minimize);
+        assert!(!config.launch_on_startup);
     }
 
     #[test]
@@ -198,7 +212,10 @@ since_days = 30
 interval_secs = 1
 "#;
         let config = Config::parse(toml_str).unwrap();
-        assert_eq!(config.scan.interval_secs, 5, "interval below 5 should be clamped to 5");
+        assert_eq!(
+            config.scan.interval_secs, 5,
+            "interval below 5 should be clamped to 5"
+        );
     }
 
     #[test]
@@ -208,8 +225,14 @@ interval_secs = 1
         let path = dir.path().join("config.toml");
 
         let config = Config {
-            repos: vec![RepoEntry { path: "/tmp/test".into(), name: Some("test".into()) }],
-            scan: ScanConfig { interval_secs: 45, since_days: 14 },
+            repos: vec![RepoEntry {
+                path: "/tmp/test".into(),
+                name: Some("test".into()),
+            }],
+            scan: ScanConfig {
+                interval_secs: 45,
+                since_days: 14,
+            },
             author_email: "test@test.com".into(),
             github: GithubConfig {
                 connected: true,
@@ -217,6 +240,7 @@ interval_secs = 1
                 token: "ghp_test".into(),
             },
             close_behavior: CloseBehavior::Exit,
+            launch_on_startup: true,
         };
 
         config.save(&path).unwrap();
@@ -230,6 +254,7 @@ interval_secs = 1
         assert_eq!(loaded.github.username, "octocat");
         assert_eq!(loaded.github.token, "ghp_test");
         assert_eq!(loaded.close_behavior, CloseBehavior::Exit);
+        assert!(loaded.launch_on_startup);
     }
 
     // --- TDD: add_repo / remove_repo / set_author_email ---
@@ -257,7 +282,10 @@ interval_secs = 1
         config.add_repo("/home/user/project1".into(), None);
         config.add_repo("/home/user/project1".into(), Some("dup".into()));
         assert_eq!(config.repos.len(), 1, "duplicate path should not be added");
-        assert_eq!(config.repos[0].name, None, "original entry should be unchanged");
+        assert_eq!(
+            config.repos[0].name, None,
+            "original entry should be unchanged"
+        );
     }
 
     #[test]
@@ -295,6 +323,28 @@ interval_secs = 1
         assert_eq!(config.author_email, "");
         config.set_author_email("dev@example.com".into());
         assert_eq!(config.author_email, "dev@example.com");
+    }
+
+    #[test]
+    fn test_set_author_email_trims_input() {
+        let mut config = Config::default();
+        config.set_author_email("  dev@example.com\n".into());
+        assert_eq!(config.author_email, "dev@example.com");
+    }
+
+    #[test]
+    fn test_set_author_email_normalizes_case() {
+        let mut config = Config::default();
+        config.set_author_email("Dev@Example.COM".into());
+        assert_eq!(config.author_email, "dev@example.com");
+    }
+
+    #[test]
+    fn test_set_author_email_whitespace_only_clears_filter() {
+        let mut config = Config::default();
+        config.set_author_email("dev@example.com".into());
+        config.set_author_email(" \n\t ".into());
+        assert_eq!(config.author_email, "");
     }
 
     #[test]
@@ -356,5 +406,26 @@ interval_secs = 1
         config.save(&path).unwrap();
         let loaded = Config::load(&path).unwrap();
         assert_eq!(loaded.close_behavior, CloseBehavior::Exit);
+    }
+
+    #[test]
+    fn test_launch_on_startup_defaults_to_false() {
+        let config = Config::parse("").unwrap();
+        assert!(!config.launch_on_startup);
+    }
+
+    #[test]
+    fn test_launch_on_startup_parsed_from_toml() {
+        let config = Config::parse(r#"launch_on_startup = true"#).unwrap();
+        assert!(config.launch_on_startup);
+    }
+
+    #[test]
+    fn test_set_launch_on_startup() {
+        let mut config = Config::default();
+        config.set_launch_on_startup(true);
+        assert!(config.launch_on_startup);
+        config.set_launch_on_startup(false);
+        assert!(!config.launch_on_startup);
     }
 }
