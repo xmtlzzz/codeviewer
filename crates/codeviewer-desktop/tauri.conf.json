@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "identifier": "com.codeviewer.desktop",
   "build": {
-    "beforeDevCommand": "npm.cmd --prefix D:\\Desktop\\code\\Rust\\codeviewer\\frontend run dev",
+    "beforeDevCommand": "npm --prefix ../../frontend run dev",
     "devUrl": "http://localhost:5173",
-    "beforeBuildCommand": "npm.cmd --prefix D:\\Desktop\\code\\Rust\\codeviewer\\frontend run build",
+    "beforeBuildCommand": "npm --prefix ../../frontend run build",
     "frontendDist": "../../frontend/dist"
   },
   "app": {
@@ -20,7 +20,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; connect-src 'self' https://api.github.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'"
     }
   },
   "bundle": {

@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
+    "test": "node --experimental-strip-types src/dashboardStats.test.ts && node --experimental-strip-types src/api.test.ts",
     "preview": "vite preview",
     "tauri:dev": "cd ../crates/codeviewer-desktop && tauri dev",
     "tauri:build": "cd ../crates/codeviewer-desktop && tauri build"

@@ -49,7 +49,9 @@ export async function clearGithubConnection(): Promise<Config> {
   return invoke<Config>("clear_github_connection");
 }
 
-interface GithubApiRepo {
+const GITHUB_PER_PAGE = 100;
+
+export interface GithubApiRepo {
   name: string;
   full_name: string;
   html_url: string;
@@ -61,26 +63,27 @@ interface GithubApiRepo {
   updated_at: string | null;
 }
 
-export async function getGithubPublicRepos(
-  username: string,
-  token?: string,
-): Promise<GithubRepoSummary[]> {
-  const url = `https://api.github.com/users/${encodeURIComponent(
-    username,
-  )}/repos?type=owner&sort=updated&per_page=100`;
+export function buildGithubReposUrl(username: string, page: number): string {
+  const params = new URLSearchParams({
+    type: "owner",
+    sort: "updated",
+    per_page: String(GITHUB_PER_PAGE),
+    page: String(page),
+  });
+  return `https://api.github.com/users/${encodeURIComponent(username)}/repos?${params}`;
+}
+
+function githubHeaders(token?: string): Record<string, string> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github+json",
   };
   if (token?.trim()) {
     headers.Authorization = `Bearer ${token.trim()}`;
   }
+  return headers;
+}
 
-  const response = await fetch(url, { headers });
-  if (!response.ok) {
-    throw new Error(`GitHub repos request failed: ${response.status}`);
-  }
-
-  const repos = (await response.json()) as GithubApiRepo[];
+export function mapGithubPublicRepos(repos: GithubApiRepo[]): GithubRepoSummary[] {
   return repos
     .filter((repo) => !repo.private)
     .map((repo) => ({
@@ -101,4 +104,26 @@ export async function getGithubPublicRepos(
       daily_stats: [],
       working_tree_changes: [],
     }));
+}
+
+export async function getGithubPublicRepos(
+  username: string,
+  token?: string,
+  fetchImpl: typeof fetch = fetch,
+): Promise<GithubRepoSummary[]> {
+  const allRepos: GithubApiRepo[] = [];
+  const headers = githubHeaders(token);
+
+  for (let page = 1; ; page += 1) {
+    const response = await fetchImpl(buildGithubReposUrl(username, page), { headers });
+    if (!response.ok) {
+      throw new Error(`GitHub repos request failed: ${response.status}`);
+    }
+
+    const repos = (await response.json()) as GithubApiRepo[];
+    allRepos.push(...repos);
+    if (repos.length < GITHUB_PER_PAGE) break;
+  }
+
+  return mapGithubPublicRepos(allRepos);
 }

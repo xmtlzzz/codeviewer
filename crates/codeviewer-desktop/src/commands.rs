@@ -92,6 +92,7 @@ pub fn add_repo(
     path: String,
     name: Option<String>,
 ) -> Result<config::Config, String> {
+    scanner::validate_repo(std::path::Path::new(&path)).map_err(|e| e.to_string())?;
     let mut guard = state.config.lock().unwrap();
     guard.add_repo(path, name);
     guard.save(&state.config_path).map_err(|e| e.to_string())?;

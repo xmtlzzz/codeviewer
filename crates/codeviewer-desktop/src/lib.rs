@@ -4,8 +4,8 @@ mod commands;
 mod scanner_task;
 mod tray;
 
-use commands::AppState;
 use codeviewer_core::config::CloseBehavior;
+use commands::AppState;
 use tauri::Manager;
 use tauri_plugin_autostart::{MacosLauncher, ManagerExt};
 
@@ -45,7 +45,13 @@ pub fn run() {
                 let _ = window.show();
                 let _ = window.set_focus();
             }
-            if app.state::<AppState>().config.lock().unwrap().launch_on_startup {
+            if app
+                .state::<AppState>()
+                .config
+                .lock()
+                .unwrap()
+                .launch_on_startup
+            {
                 let _ = app.autolaunch().enable();
             }
             scanner_task::spawn_scanner_task(app.handle().clone());

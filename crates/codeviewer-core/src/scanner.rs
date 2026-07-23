@@ -20,12 +20,18 @@ impl Default for ScanOptions {
     }
 }
 
-pub fn scan_repo(repo_path: &Path, opts: &ScanOptions) -> Result<Vec<DailyStat>, ScanError> {
+pub fn validate_repo(repo_path: &Path) -> Result<(), ScanError> {
     if !repo_path.exists() {
         return Err(ScanError::PathNotFound(repo_path.display().to_string()));
     }
-    let repo = Repository::open(repo_path)
-        .map_err(|_| ScanError::NotAGitRepo(repo_path.display().to_string()))?;
+    Repository::open(repo_path)
+        .map(|_| ())
+        .map_err(|_| ScanError::NotAGitRepo(repo_path.display().to_string()))
+}
+
+pub fn scan_repo(repo_path: &Path, opts: &ScanOptions) -> Result<Vec<DailyStat>, ScanError> {
+    validate_repo(repo_path)?;
+    let repo = Repository::open(repo_path)?;
 
     let repo_name = repo_path
         .file_name()
@@ -348,6 +354,21 @@ mod tests {
         assert!(stats.is_empty());
     }
 
+    #[test]
+    fn test_validate_repo() {
+        let missing = Path::new("definitely-not-a-repository");
+        assert!(matches!(
+            validate_repo(missing),
+            Err(ScanError::PathNotFound(_))
+        ));
+        let dir = TempDir::new().unwrap();
+        assert!(matches!(
+            validate_repo(dir.path()),
+            Err(ScanError::NotAGitRepo(_))
+        ));
+        let (repo_dir, _repo) = make_test_repo();
+        assert!(validate_repo(repo_dir.path()).is_ok());
+    }
     #[test]
     fn test_count_insertions_single_commit() {
         let (dir, repo) = make_test_repo();

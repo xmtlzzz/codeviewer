@@ -1208,6 +1208,12 @@ body {
   flex-shrink: 0;
 }
 
+.repo-add-error {
+  padding: 0 16px 12px;
+  color: var(--neg);
+  font-size: 12px;
+}
+
 .email-edit {
   display: flex;
   gap: 8px;

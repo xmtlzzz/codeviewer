@@ -42,6 +42,7 @@ export function Settings({
   const [emailInput, setEmailInput] = useState(config.author_email);
   const [githubUsername, setGithubUsername] = useState(config.github.username);
   const [githubToken, setGithubToken] = useState(config.github.token);
+  const [repoError, setRepoError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -61,6 +62,7 @@ export function Settings({
   const handleAddRepo = async () => {
     const path = newRepoPath.trim();
     if (!path) return;
+    setRepoError(null);
     setSaving(true);
     try {
       const updated = await addRepo(path);
@@ -68,6 +70,7 @@ export function Settings({
       setNewRepoPath("");
     } catch (e) {
       console.error("add_repo failed:", e);
+      setRepoError(e instanceof Error ? e.message : String(e));
     } finally {
       setSaving(false);
     }
@@ -307,7 +310,10 @@ export function Settings({
               type="text"
               placeholder={t("settings.repoPathPlaceholder")}
               value={newRepoPath}
-              onChange={(e) => setNewRepoPath(e.target.value)}
+              onChange={(e) => {
+                setNewRepoPath(e.target.value);
+                setRepoError(null);
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleAddRepo();
               }}
@@ -323,6 +329,11 @@ export function Settings({
               {t("settings.add")}
             </button>
           </div>
+          {repoError && (
+            <div className="repo-add-error" role="alert">
+              {repoError}
+            </div>
+          )}
         </div>
       </div>
 

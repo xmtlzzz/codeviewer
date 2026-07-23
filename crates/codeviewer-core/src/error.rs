@@ -26,14 +26,22 @@ impl fmt::Display for ScanError {
 impl std::error::Error for ScanError {}
 
 impl From<git2::Error> for ScanError {
-    fn from(e: git2::Error) -> Self { ScanError::Git(e.to_string()) }
+    fn from(e: git2::Error) -> Self {
+        ScanError::Git(e.to_string())
+    }
 }
 impl From<std::io::Error> for ScanError {
-    fn from(e: std::io::Error) -> Self { ScanError::Io(e.to_string()) }
+    fn from(e: std::io::Error) -> Self {
+        ScanError::Io(e.to_string())
+    }
 }
 impl From<serde_json::Error> for ScanError {
-    fn from(e: serde_json::Error) -> Self { ScanError::Json(e.to_string()) }
+    fn from(e: serde_json::Error) -> Self {
+        ScanError::Json(e.to_string())
+    }
 }
 impl From<toml::de::Error> for ScanError {
-    fn from(e: toml::de::Error) -> Self { ScanError::Toml(e.to_string()) }
+    fn from(e: toml::de::Error) -> Self {
+        ScanError::Toml(e.to_string())
+    }
 }
